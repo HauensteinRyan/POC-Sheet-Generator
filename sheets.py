@@ -159,14 +159,25 @@ def sync_rows(rows: list[dict], sheet_type: str) -> dict:
     # 4. Standardise formatting across all data rows (font, size, alignment)
     total_rows = len(ws.get_all_values())
     if total_rows >= 2:
-        data_range = f"A2:G{total_rows}"
-        ws.format(data_range, {
-            "textFormat": {
-                "fontFamily": "Arial",
-                "fontSize": 10,
-                "bold": False,
-            },
+        # Arial everywhere
+        ws.format(f"A2:G{total_rows}", {
+            "textFormat": {"fontFamily": "Arial", "fontSize": 10, "bold": False},
+        })
+        # Columns A-D and G: center both axes
+        for col in ("A", "B", "C", "D", "G"):
+            ws.format(f"{col}2:{col}{total_rows}", {
+                "horizontalAlignment": "CENTER",
+                "verticalAlignment": "MIDDLE",
+            })
+        # Column E (Cue): top + left
+        ws.format(f"E2:E{total_rows}", {
+            "horizontalAlignment": "LEFT",
             "verticalAlignment": "TOP",
+        })
+        # Column F (Notes): center both axes
+        ws.format(f"F2:F{total_rows}", {
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
         })
 
     return {"added": added, "updated": updated, "removed": removed}
