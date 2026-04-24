@@ -37,6 +37,10 @@
     .header-logos { display: flex; align-items: center; gap: 20px; }
     .header-logos img { height: 32px; width: auto; }
     .header-divider { width: 2px; height: 24px; background: #9CA3AF; flex-shrink: 0; }
+    .header-version { font-size: 12px; font-weight: 500; color: #4B5563; letter-spacing: 0.05em;
+      align-self: flex-end; transform: translate(-9px, 3px); }
+    .header-title-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    .header-title { font-size: 13px; font-weight: 600; color: var(--muted); }
 
     .columns {
       display: grid;
@@ -257,6 +261,9 @@
       <img src="/static/logos/3027.png" alt="3027" />
       <div class="header-divider"></div>
       <img src="/static/logos/prusik.png" alt="Prusik" />
+      <span class="header-version">v1.0</span>
+      <div class="header-title-divider"></div>
+      <span class="header-title">POC Sheet Generator</span>
     </div>
   </header>
 
