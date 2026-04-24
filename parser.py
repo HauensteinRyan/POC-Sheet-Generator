@@ -62,7 +62,7 @@ def parse_doc(path: str) -> list[dict]:
                 body.append(l)
         cue = " ".join(body).upper()
         if phonetic:
-            cue = cue + "\n" + " ".join(phonetic).upper()
+            cue = cue + "\n\n" + " ".join(phonetic).upper()
         rows.append({"number": number, "name": name, "cue": cue})
 
     def start_section(number_str: str, name_str: str):
