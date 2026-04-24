@@ -1,0 +1,12 @@
+{
+  "sheets": {
+    "PPV": {
+      "spreadsheet_id": "1Ul2YnLUN4QQ_AO3BOBhnRYBar2wYUr6DhLRc5ZMB1-Y",
+      "credentials_file": "credentials/poc-sheet-generator-e5b88aa8f1be.json"
+    },
+    "FN": {
+      "spreadsheet_id": "1wwiviOwd4jnEjtSWFwww_IkPp4ON0yQrnLkFHArsuhA",
+      "credentials_file": "credentials/poc-sheet-generator-e5b88aa8f1be.json"
+    }
+  }
+}

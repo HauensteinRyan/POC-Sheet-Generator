@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POC Sheet Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0f0f;
+      --surface:  #161616;
+      --border:   #2a2a2a;
+      --gold:     #d4a017;
+      --text:     #e8e8e8;
+      --muted:    #666;
+      --success:  #4caf76;
+      --warn:     #e0a030;
+      --error:    #e05c5c;
+      --row-even: #1a1a1a;
+      --row-odd:  #141414;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px; }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    header {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    header h1 { font-size: 15px; font-weight: 600; }
+    header .tagline { font-size: 12px; color: var(--muted); }
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 210px 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Panels ─────────────────────────────────────────────── */
+    .panel { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+    .panel:last-child { border-right: none; }
+
+    .panel-header {
+      padding: 9px 16px; border-bottom: 1px solid var(--border);
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.7px; color: var(--muted); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-header .ph-count { font-weight: 400; color: var(--muted); }
+
+    .panel-body { flex: 1; overflow-y: auto; }
+
+    /* ── Drop zone ──────────────────────────────────────────── */
+    .drop-zone {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 8px; height: 100%; padding: 32px;
+      text-align: center; cursor: pointer; position: relative;
+      transition: background 0.12s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { background: rgba(212,160,23,.05); }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone .dz-icon  { font-size: 38px; }
+    .drop-zone .dz-label { font-size: 14px; font-weight: 500; }
+    .drop-zone .dz-hint  { font-size: 12px; color: var(--muted); }
+
+    /* ── Doc section cards ───────────────────────────────────── */
+    .section-card {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: grid; grid-template-columns: 50px 1fr; gap: 0 10px;
+    }
+    .section-card:nth-child(even) { background: var(--row-even); }
+    .section-card:nth-child(odd)  { background: var(--row-odd); }
+    .sc-num  { font-size: 11px; font-weight: 700; color: var(--gold); padding-top: 1px; }
+    .sc-name { font-weight: 600; font-size: 12px; margin-bottom: 3px; }
+    .sc-cue  {
+      color: var(--muted); font-size: 11px; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .sc-cue.no-copy { font-style: italic; }
+
+    /* ── Middle column ──────────────────────────────────────── */
+    .mid-col {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; padding: 20px 14px;
+      border-right: 1px solid var(--border);
+    }
+
+    /* file badge */
+    .file-badge { display: none; flex-direction: column; align-items: center; gap: 5px; text-align: center; width: 100%; }
+    .file-badge .fb-icon { font-size: 26px; }
+    .file-badge .fb-name { font-size: 11px; color: var(--muted); word-break: break-all; }
+    .file-badge .fb-clear { font-size: 11px; color: var(--error); cursor: pointer; text-decoration: underline; margin-top: 2px; }
+
+    /* show-type toggle */
+    .show-toggle { display: none; width: 100%; }
+    .show-toggle-label { font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.6px; color: var(--muted); text-align: center; margin-bottom: 6px; }
+    .toggle-btns { display: flex; gap: 0; width: 100%; }
+    .toggle-btn {
+      flex: 1; padding: 9px 0; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .toggle-btn:first-child { border-radius: 6px 0 0 6px; }
+    .toggle-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+    .toggle-btn.active      { background: var(--gold); color: #000; border-color: var(--gold); }
+
+    /* action buttons */
+    .btn-sync {
+      display: none; width: 100%; padding: 11px 8px;
+      border: none; border-radius: 7px; background: var(--gold);
+      color: #000; font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: background 0.12s, opacity 0.12s;
+    }
+    .btn-sync:hover    { background: #e0ac1a; }
+    .btn-sync:disabled { opacity: 0.4; cursor: default; }
+
+    .btn-download {
+      display: none; width: 100%; padding: 9px 8px;
+      border: 1px solid #3a3a3a; border-radius: 7px; background: transparent;
+      color: var(--text); font-size: 12px; font-weight: 500; cursor: pointer;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .btn-download:hover { border-color: #555; background: #1e1e1e; }
+
+    #status-msg {
+      font-size: 11px; text-align: center; color: var(--muted); min-height: 14px; width: 100%;
+    }
+    #status-msg.loading { color: var(--gold); }
+    #status-msg.success { color: var(--success); }
+    #status-msg.error   { color: var(--error); }
+
+    /* config warnings */
+    .config-warn {
+      display: none; width: 100%; background: rgba(224,160,48,.1);
+      border: 1px solid rgba(224,160,48,.3); border-radius: 6px;
+      padding: 8px 10px; font-size: 10px; color: var(--warn); line-height: 1.5;
+    }
+
+    /* ── Right panel placeholder ─────────────────────────────── */
+    .placeholder {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 10px; height: 100%;
+      color: var(--muted); padding: 40px; text-align: center;
+    }
+    .placeholder .ph-icon { font-size: 34px; opacity: 0.25; }
+
+    /* ── Excel preview table ─────────────────────────────────── */
+    table.xl-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
+    table.xl-table th {
+      position: sticky; top: 0; background: #1e1e1e;
+      border-bottom: 2px solid var(--border); padding: 7px 10px;
+      text-align: left; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); z-index: 1;
+    }
+    table.xl-table td {
+      padding: 7px 10px; border-bottom: 1px solid var(--border);
+      vertical-align: top; line-height: 1.4; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    table.xl-table tr:nth-child(even) td { background: var(--row-even); }
+    table.xl-table tr:nth-child(odd)  td { background: var(--row-odd); }
+    table.xl-table td:first-child { color: var(--gold); font-weight: 700; width: 52px; }
+    .col-name { width: 155px; }
+    .col-cue  {
+      white-space: normal; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .col-len  { width: 38px; color: var(--muted); }
+
+    /* ── Sync results ────────────────────────────────────────── */
+    .sync-results { padding: 16px; }
+    .sync-summary {
+      display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .sync-pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    }
+    .sync-pill.added   { background: rgba(76,175,118,.12); color: var(--success); }
+    .sync-pill.updated { background: rgba(212,160,23,.12);  color: var(--gold); }
+    .sync-pill.removed { background: rgba(224,92,92,.12);  color: var(--error); }
+
+    .sync-group { margin-bottom: 14px; }
+    .sync-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.6px; margin-bottom: 6px; padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sync-group-label.added   { color: var(--success); }
+    .sync-group-label.updated { color: var(--gold); }
+    .sync-group-label.removed { color: var(--error); }
+    .sync-item {
+      padding: 4px 0; font-size: 12px; display: flex; align-items: center; gap: 6px;
+    }
+    .sync-item::before { font-size: 10px; flex-shrink: 0; }
+    .sync-group.added   .sync-item::before { content: '＋'; color: var(--success); }
+    .sync-group.updated .sync-item::before { content: '↺'; color: var(--gold); }
+    .sync-group.removed .sync-item::before { content: '✕'; color: var(--error); }
+
+    /* right panel toggle tabs */
+    .panel-tabs { display: flex; gap: 0; }
+    .panel-tab {
+      padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+      color: var(--muted); border-bottom: 2px solid transparent;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .panel-tab.active { color: var(--text); border-bottom-color: var(--gold); }
+
+    /* scrollbar */
+    .panel-body::-webkit-scrollbar { width: 6px; }
+    .panel-body::-webkit-scrollbar-track { background: transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>POC Sheet Generator</h1>
+    <span class="tagline">Upload a UFC script doc → sync to Google Sheets</span>
+  </header>
+
+  <div class="columns">
+
+    <!-- LEFT: Doc preview -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>📄 Word Doc</span>
+        <span class="ph-count" id="left-count"></span>
+      </div>
+      <div class="panel-body" id="left-body">
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="file-input" accept=".docx" />
+          <div class="dz-icon">📄</div>
+          <div class="dz-label">Drop your .docx here</div>
+          <div class="dz-hint">or click to browse</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: Controls -->
+    <div class="mid-col">
+
+      <div class="file-badge" id="file-badge">
+        <div class="fb-icon">📎</div>
+        <div class="fb-name" id="fb-name"></div>
+        <div class="fb-clear" id="fb-clear">Remove file</div>
+      </div>
+
+      <!-- PPV / FN toggle -->
+      <div class="show-toggle" id="show-toggle">
+        <div class="show-toggle-label">Show Type</div>
+        <div class="toggle-btns">
+          <button class="toggle-btn active" data-type="PPV">PPV</button>
+          <button class="toggle-btn" data-type="FN">FN</button>
+        </div>
+      </div>
+
+      <button class="btn-sync" id="btn-sync">Sync to Sheets</button>
+      <button class="btn-download" id="btn-download">⬇ Download .xlsx</button>
+
+      <div id="status-msg">Select a .docx to begin</div>
+
+      <div class="config-warn" id="config-warn"></div>
+    </div>
+
+    <!-- RIGHT: Excel preview / sync results -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-tabs" id="right-tabs" style="display:none">
+          <div class="panel-tab active" data-tab="preview">📊 Preview</div>
+          <div class="panel-tab" data-tab="results">✅ Sync Results</div>
+        </div>
+        <span id="right-header-label">📊 Excel Preview</span>
+      </div>
+      <div class="panel-body" id="right-body">
+        <div class="placeholder">
+          <div class="ph-icon">📊</div>
+          <div>Excel preview appears here after uploading a doc</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────
+  let selectedFile = null;
+  let parsedRows   = null;
+  let xlsxBlob     = null;
+  let xlsxFilename = 'output.xlsx';
+  let showType     = 'PPV';
+  let syncResultData = null;
+
+  // ── Element refs ───────────────────────────────────────────────
+  const dropZone    = document.getElementById('drop-zone');
+  const fileInput   = document.getElementById('file-input');
+  const fileBadge   = document.getElementById('file-badge');
+  const fbName      = document.getElementById('fb-name');
+  const fbClear     = document.getElementById('fb-clear');
+  const showToggle  = document.getElementById('show-toggle');
+  const btnSync     = document.getElementById('btn-sync');
+  const btnDownload = document.getElementById('btn-download');
+  const statusMsg   = document.getElementById('status-msg');
+  const leftBody    = document.getElementById('left-body');
+  const leftCount   = document.getElementById('left-count');
+  const rightBody   = document.getElementById('right-body');
+  const rightTabs   = document.getElementById('right-tabs');
+  const rightLabel  = document.getElementById('right-header-label');
+  const configWarn  = document.getElementById('config-warn');
+
+  // ── Config status (check on load) ─────────────────────────────
+  fetch('/config-status').then(r => r.json()).then(({ warnings }) => {
+    if (warnings.length) {
+      configWarn.style.display = 'block';
+      configWarn.textContent = '⚠ ' + warnings.join(' · ');
+    }
+  }).catch(() => {});
+
+  // ── Status helper ──────────────────────────────────────────────
+  function setStatus(msg, cls = '') {
+    statusMsg.textContent = msg;
+    statusMsg.className = cls;
+  }
+
+  // ── Show-type toggle ───────────────────────────────────────────
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showType = btn.dataset.type;
+    });
+  });
+
+  // ── File selection ─────────────────────────────────────────────
+  function selectFile(file) {
+    if (!file.name.toLowerCase().endsWith('.docx')) {
+      setStatus('Only .docx files are supported.', 'error');
+      return;
+    }
+    selectedFile = file;
+    parsedRows   = null;
+    xlsxBlob     = null;
+    syncResultData = null;
+
+    fbName.textContent    = file.name;
+    fileBadge.style.display  = 'flex';
+    showToggle.style.display = 'block';
+    btnSync.style.display    = 'block';
+    btnDownload.style.display = 'none';
+
+    // Reset right panel
+    showRightPlaceholder();
+    rightTabs.style.display = 'none';
+    rightLabel.style.display = 'inline';
+
+    setStatus('Parsing document…', 'loading');
+    loadDocPreview(file);
+  }
+
+  function clearFile() {
+    selectedFile = parsedRows = xlsxBlob = syncResultData = null;
+    fileInput.value = '';
+    fileBadge.style.display   = 'none';
+    showToggle.style.display  = 'none';
+    btnSync.style.display     = 'none';
+    btnDownload.style.display = 'none';
+    leftCount.textContent = '';
+    setStatus('Select a .docx to begin', '');
+    restoreDropZone();
+    showRightPlaceholder();
+    rightTabs.style.display = 'none';
+    rightLabel.style.display = 'inline';
+  }
+
+  fbClear.addEventListener('click', clearFile);
+
+  // ── Doc preview ────────────────────────────────────────────────
+  async function loadDocPreview(file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/parse', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({detail:res.statusText}))).detail);
+      const data = await res.json();
+      parsedRows = data.rows;
+      renderDocCards(parsedRows);
+      renderExcelTable(parsedRows);
+      leftCount.textContent = `${data.count} sections`;
+      setStatus(`${data.count} sections found`, '');
+    } catch (e) {
+      setStatus(`Parse error: ${e.message}`, 'error');
+    }
+  }
+
+  function renderDocCards(rows) {
+    leftBody.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    rows.forEach(r => {
+      const card = document.createElement('div');
+      card.className = 'section-card';
+      card.innerHTML = `
+        <div class="sc-num">${esc(r.number)}</div>
+        <div>
+          <div class="sc-name">${esc(r.name)}</div>
+          ${r.cue
+            ? `<div class="sc-cue">${esc(r.cue)}</div>`
+            : `<div class="sc-cue no-copy">No spoken copy</div>`}
+        </div>`;
+      frag.appendChild(card);
+    });
+    leftBody.appendChild(frag);
+  }
+
+  // ── Right panel views ──────────────────────────────────────────
+  function showRightPlaceholder() {
+    rightBody.innerHTML = `
+      <div class="placeholder">
+        <div class="ph-icon">📊</div>
+        <div>Excel preview appears here after uploading a doc</div>
+      </div>`;
+  }
+
+  function renderExcelTable(rows) {
+    const wrap = document.createElement('div');
+    const table = document.createElement('table');
+    table.className = 'xl-table';
+    table.innerHTML = `
+      <colgroup>
+        <col style="width:52px"><col style="width:155px"><col><col style="width:38px">
+      </colgroup>
+      <thead><tr>
+        <th>#</th><th class="col-name">Name</th><th>Cue</th><th class="col-len">Len</th>
+      </tr></thead>`;
+    const tbody = document.createElement('tbody');
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(r.number)}</td>
+        <td class="col-name" title="${esc(r.name)}">${esc(r.name)}</td>
+        <td class="col-cue">${r.cue ? esc(r.cue) : '<span style="color:var(--muted);font-style:italic">—</span>'}</td>
+        <td class="col-len">${r.cue ? r.cue.length : 0}</td>`;
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  function renderSyncResults(data) {
+    const div = document.createElement('div');
+    div.className = 'sync-results';
+
+    // Summary pills
+    const summary = document.createElement('div');
+    summary.className = 'sync-summary';
+    summary.innerHTML = `
+      <div class="sync-pill added">＋ ${data.added.length} Added</div>
+      <div class="sync-pill updated">↺ ${data.updated.length} Updated</div>
+      <div class="sync-pill removed">✕ ${data.removed.length} Removed</div>`;
+    div.appendChild(summary);
+
+    // Detail groups
+    const groups = [
+      { key: 'added',   label: 'Added',   cls: 'added'   },
+      { key: 'updated', label: 'Updated', cls: 'updated' },
+      { key: 'removed', label: 'Removed', cls: 'removed' },
+    ];
+    groups.forEach(({ key, label, cls }) => {
+      if (!data[key].length) return;
+      const g = document.createElement('div');
+      g.className = `sync-group ${cls}`;
+      g.innerHTML = `<div class="sync-group-label ${cls}">${label} (${data[key].length})</div>`;
+      data[key].forEach(name => {
+        const item = document.createElement('div');
+        item.className = 'sync-item';
+        item.textContent = name;
+        g.appendChild(item);
+      });
+      div.appendChild(g);
+    });
+
+    return div;
+  }
+
+  // Right panel tabs (Preview / Results)
+  function setupRightTabs(previewEl, resultsEl) {
+    rightLabel.style.display = 'none';
+    rightTabs.style.display  = 'flex';
+
+    const tabs = rightTabs.querySelectorAll('.panel-tab');
+    const views = { preview: previewEl, results: resultsEl };
+
+    rightBody.innerHTML = '';
+    rightBody.appendChild(previewEl);
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        rightBody.innerHTML = '';
+        rightBody.appendChild(views[tab.dataset.tab]);
+      });
+    });
+
+    // Start on results tab after a sync
+    tabs[0].classList.remove('active');
+    tabs[1].classList.add('active');
+    rightBody.innerHTML = '';
+    rightBody.appendChild(resultsEl);
+  }
+
+  // ── Sync to Sheets ─────────────────────────────────────────────
+  btnSync.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    btnSync.disabled = true;
+    setStatus(`Syncing to ${showType} sheet…`, 'loading');
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+    fd.append('show_type', showType);
+
+    try {
+      const res = await fetch('/sync', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || res.statusText);
+      }
+      syncResultData = await res.json();
+
+      const a = syncResultData.added.length;
+      const u = syncResultData.updated.length;
+      const r = syncResultData.removed.length;
+      setStatus(`Synced to ${showType}: +${a} added, ${u} updated, ${r} removed`, 'success');
+
+      btnDownload.style.display = 'block';
+
+      const previewEl  = parsedRows ? renderExcelTable(parsedRows) : document.createElement('div');
+      const resultsEl  = renderSyncResults(syncResultData);
+      setupRightTabs(previewEl, resultsEl);
+    } catch (e) {
+      setStatus(`Sync error: ${e.message}`, 'error');
+    } finally {
+      btnSync.disabled = false;
+    }
+  });
+
+  // ── Download .xlsx ─────────────────────────────────────────────
+  btnDownload.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    btnDownload.disabled = true;
+    btnDownload.textContent = 'Generating…';
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({detail:res.statusText}))).detail);
+
+      const blob = await res.blob();
+      const disp = res.headers.get('Content-Disposition') || '';
+      const m = disp.match(/filename="?([^"]+)"?/);
+      const filename = m ? m[1] : selectedFile.name.replace('.docx', '_output.xlsx');
+
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setStatus(`Download error: ${e.message}`, 'error');
+    } finally {
+      btnDownload.disabled = false;
+      btnDownload.textContent = '⬇ Download .xlsx';
+    }
+  });
+
+  // ── Drop zone ──────────────────────────────────────────────────
+  function restoreDropZone() {
+    leftBody.innerHTML = '';
+    const dz = document.createElement('div');
+    dz.className = 'drop-zone';
+    dz.innerHTML = `
+      <input type="file" accept=".docx" />
+      <div class="dz-icon">📄</div>
+      <div class="dz-label">Drop your .docx here</div>
+      <div class="dz-hint">or click to browse</div>`;
+    wireDropZone(dz);
+    leftBody.appendChild(dz);
+  }
+
+  function wireDropZone(dz) {
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+    });
+    const inp = dz.querySelector('input[type=file]');
+    inp.addEventListener('change', () => { if (inp.files[0]) selectFile(inp.files[0]); });
+  }
+
+  wireDropZone(dropZone);
+
+  // ── Escape helper ──────────────────────────────────────────────
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
