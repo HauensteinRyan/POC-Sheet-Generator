@@ -156,29 +156,43 @@ def sync_rows(rows: list[dict], sheet_type: str) -> dict:
             added.append(row["name"])
         ws.append_rows(append_values, value_input_option="USER_ENTERED")
 
-    # 4. Standardise formatting across all data rows (font, size, alignment)
+    # 4. Standardise formatting across all data rows
     total_rows = len(ws.get_all_values())
     if total_rows >= 2:
-        # Arial everywhere
+        # Arial 10pt everywhere, no bold by default
         ws.format(f"A2:G{total_rows}", {
             "textFormat": {"fontFamily": "Arial", "fontSize": 10, "bold": False},
         })
-        # Columns A-D and G: center both axes
-        for col in ("A", "B", "C", "D", "G"):
+        # Columns A, C, F: center both axes
+        for col in ("A", "C", "F"):
             ws.format(f"{col}2:{col}{total_rows}", {
                 "horizontalAlignment": "CENTER",
                 "verticalAlignment": "MIDDLE",
             })
-        # Column E (Cue): top + left
+        # Columns B, D, G: bold + center both axes
+        for col in ("B", "D", "G"):
+            ws.format(f"{col}2:{col}{total_rows}", {
+                "horizontalAlignment": "CENTER",
+                "verticalAlignment": "MIDDLE",
+                "textFormat": {"fontFamily": "Arial", "fontSize": 10, "bold": True},
+            })
+        # Column E (Cue): wrap text, top + left
         ws.format(f"E2:E{total_rows}", {
             "horizontalAlignment": "LEFT",
             "verticalAlignment": "TOP",
+            "wrapStrategy": "WRAP",
         })
-        # Column F (Notes): center both axes
-        ws.format(f"F2:F{total_rows}", {
-            "horizontalAlignment": "CENTER",
-            "verticalAlignment": "MIDDLE",
-        })
+        # Auto-resize all data rows to fit wrapped content in column E
+        ws.spreadsheet.batch_update({"requests": [{
+            "autoResizeDimensions": {
+                "dimensions": {
+                    "sheetId": ws.id,
+                    "dimension": "ROWS",
+                    "startIndex": 1,
+                    "endIndex": total_rows,
+                }
+            }
+        }]})
 
     return {"added": added, "updated": updated, "removed": removed}
 
