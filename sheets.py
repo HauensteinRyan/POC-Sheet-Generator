@@ -163,12 +163,18 @@ def sync_rows(rows: list[dict], sheet_type: str) -> dict:
         ws.format(f"A2:G{total_rows}", {
             "textFormat": {"fontFamily": "Arial", "fontSize": 10, "bold": False},
         })
-        # Columns A, C, F: center both axes
-        for col in ("A", "C", "F"):
+        # Columns A, C: Georgia font, center both axes
+        for col in ("A", "C"):
             ws.format(f"{col}2:{col}{total_rows}", {
                 "horizontalAlignment": "CENTER",
                 "verticalAlignment": "MIDDLE",
+                "textFormat": {"fontFamily": "Georgia", "fontSize": 10, "bold": False},
             })
+        # Column F: center both axes
+        ws.format(f"F2:F{total_rows}", {
+            "horizontalAlignment": "CENTER",
+            "verticalAlignment": "MIDDLE",
+        })
         # Columns B, D, G: bold + center both axes
         for col in ("B", "D", "G"):
             ws.format(f"{col}2:{col}{total_rows}", {
