@@ -156,6 +156,19 @@ def sync_rows(rows: list[dict], sheet_type: str) -> dict:
             added.append(row["name"])
         ws.append_rows(append_values, value_input_option="USER_ENTERED")
 
+    # 4. Standardise formatting across all data rows (font, size, alignment)
+    total_rows = len(ws.get_all_values())
+    if total_rows >= 2:
+        data_range = f"A2:G{total_rows}"
+        ws.format(data_range, {
+            "textFormat": {
+                "fontFamily": "Arial",
+                "fontSize": 10,
+                "bold": False,
+            },
+            "verticalAlignment": "TOP",
+        })
+
     return {"added": added, "updated": updated, "removed": removed}
 
 
