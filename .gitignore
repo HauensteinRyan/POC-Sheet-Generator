@@ -6,3 +6,7 @@ __pycache__/
 
 # Service account key files — never commit these
 credentials/*.json
+
+# Auth — never commit these
+users.json
+secret.key

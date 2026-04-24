@@ -56,7 +56,7 @@
     }
     .panel-header .ph-count { font-weight: 400; color: var(--muted); }
 
-    .panel-body { flex: 1; overflow-y: auto; }
+    .panel-body { flex: 1; overflow: auto; }
 
     /* ── Drop zone ──────────────────────────────────────────── */
     .drop-zone {
@@ -84,7 +84,6 @@
     .sc-name { font-weight: 600; font-size: 12px; margin-bottom: 3px; }
     .sc-cue  {
       color: var(--muted); font-size: 11px; line-height: 1.4;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .sc-cue.no-copy { font-style: italic; }
 
@@ -124,6 +123,14 @@
     }
     .btn-sync:hover    { background: #e0ac1a; }
     .btn-sync:disabled { opacity: 0.4; cursor: default; }
+
+    .btn-preview {
+      display: none; width: 100%; padding: 9px 8px;
+      border: 1px solid #3a3a3a; border-radius: 7px; background: transparent;
+      color: var(--text); font-size: 12px; font-weight: 500; cursor: pointer;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .btn-preview:hover { border-color: #555; background: #1e1e1e; }
 
     .btn-download {
       display: none; width: 100%; padding: 9px 8px;
@@ -165,17 +172,36 @@
     }
     table.xl-table td {
       padding: 7px 10px; border-bottom: 1px solid var(--border);
-      vertical-align: top; line-height: 1.4; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      vertical-align: top; line-height: 1.5; overflow: hidden;
+      white-space: nowrap; text-overflow: ellipsis;
     }
     table.xl-table tr:nth-child(even) td { background: var(--row-even); }
     table.xl-table tr:nth-child(odd)  td { background: var(--row-odd); }
-    table.xl-table td:first-child { color: var(--gold); font-weight: 700; width: 52px; }
-    .col-name { width: 155px; }
-    .col-cue  {
-      white-space: normal; display: -webkit-box;
-      -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    table.xl-table td:first-child { color: var(--muted); font-size: 10px; text-align: right; padding-right: 6px; width: 34px; }
+    table.xl-table td.col-name {
+      white-space: normal;
+      word-break: break-word;
+      overflow: visible;
+      width: 175px;
     }
-    .col-len  { width: 38px; color: var(--muted); }
+    table.xl-table td.col-cue {
+      white-space: normal;
+      word-break: break-word;
+      overflow: visible;
+    }
+    .col-len  { width: 62px; white-space: nowrap; }
+    .len-count   { display: block; font-weight: 700; color: var(--text); font-size: 12px; }
+    .len-formula { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* editable cells */
+    td[contenteditable="true"] { outline: none; cursor: text; }
+    td[contenteditable="true"]:focus {
+      background: #1e2a1e !important;
+      box-shadow: inset 0 0 0 1px var(--success);
+    }
+    td[contenteditable="true"]:hover:not(:focus) {
+      background: #1e1e1e !important;
+    }
 
     /* ── Sync results ────────────────────────────────────────── */
     .sync-results { padding: 16px; }
@@ -267,6 +293,7 @@
       </div>
 
       <button class="btn-sync" id="btn-sync">Sync to Sheets</button>
+      <button class="btn-preview" id="btn-preview">👁 Preview XLS</button>
       <button class="btn-download" id="btn-download">⬇ Download .xlsx</button>
 
       <div id="status-msg">Select a .docx to begin</div>
@@ -311,6 +338,7 @@
   const fbClear     = document.getElementById('fb-clear');
   const showToggle  = document.getElementById('show-toggle');
   const btnSync     = document.getElementById('btn-sync');
+  const btnPreview  = document.getElementById('btn-preview');
   const btnDownload = document.getElementById('btn-download');
   const statusMsg   = document.getElementById('status-msg');
   const leftBody    = document.getElementById('left-body');
@@ -355,10 +383,11 @@
     syncResultData = null;
 
     fbName.textContent    = file.name;
-    fileBadge.style.display  = 'flex';
-    showToggle.style.display = 'block';
-    btnSync.style.display    = 'block';
-    btnDownload.style.display = 'none';
+    fileBadge.style.display   = 'flex';
+    showToggle.style.display  = 'block';
+    btnSync.style.display     = 'block';
+    btnPreview.style.display  = 'block';
+    btnDownload.style.display = 'block';
 
     // Reset right panel
     showRightPlaceholder();
@@ -375,6 +404,7 @@
     fileBadge.style.display   = 'none';
     showToggle.style.display  = 'none';
     btnSync.style.display     = 'none';
+    btnPreview.style.display  = 'none';
     btnDownload.style.display = 'none';
     leftCount.textContent = '';
     setStatus('Select a .docx to begin', '');
@@ -406,6 +436,10 @@
 
   function renderDocCards(rows) {
     leftBody.innerHTML = '';
+    const spacer = document.createElement('div');
+    spacer.id = 'doc-header-spacer';
+    spacer.style.flexShrink = '0';
+    leftBody.appendChild(spacer);
     const frag = document.createDocumentFragment();
     rows.forEach(r => {
       const card = document.createElement('div');
@@ -434,23 +468,65 @@
 
   function renderExcelTable(rows) {
     const wrap = document.createElement('div');
+    wrap.style.overflowX = 'auto';
     const table = document.createElement('table');
     table.className = 'xl-table';
     table.innerHTML = `
       <colgroup>
-        <col style="width:52px"><col style="width:155px"><col><col style="width:38px">
+        <col style="width:34px">  <!-- col header -->
+        <col style="width:52px">  <!-- A: Promo # -->
+        <col style="width:140px"> <!-- B: Name -->
+        <col style="width:52px">  <!-- C: Promo # -->
+        <col style="width:140px"> <!-- D: Promo Name -->
+        <col style="width:320px"> <!-- E: Cue -->
+        <col style="width:80px">  <!-- F: Notes -->
+        <col style="width:52px">  <!-- G: Len -->
       </colgroup>
       <thead><tr>
-        <th>#</th><th class="col-name">Name</th><th>Cue</th><th class="col-len">Len</th>
+        <th style="color:var(--border)"></th>
+        <th>A</th>
+        <th>B</th>
+        <th>C</th>
+        <th>D</th>
+        <th>E</th>
+        <th>F</th>
+        <th>G</th>
+      </tr>
+      <tr>
+        <th style="color:var(--border)"></th>
+        <th>Promo #</th>
+        <th>Name</th>
+        <th>Promo #</th>
+        <th>Promo Name</th>
+        <th>Cue</th>
+        <th>Notes</th>
+        <th>Len</th>
       </tr></thead>`;
     const tbody = document.createElement('tbody');
-    rows.forEach(r => {
+    rows.forEach((r, i) => {
       const tr = document.createElement('tr');
+      const rowNum = i + 2;
+      const cueLen = (r.cue || '').length;
       tr.innerHTML = `
-        <td>${esc(r.number)}</td>
-        <td class="col-name" title="${esc(r.name)}">${esc(r.name)}</td>
-        <td class="col-cue">${r.cue ? esc(r.cue) : '<span style="color:var(--muted);font-style:italic">—</span>'}</td>
-        <td class="col-len">${r.cue ? r.cue.length : 0}</td>`;
+        <td>${rowNum}</td>
+        <td contenteditable="true" spellcheck="false" style="color:var(--gold);font-weight:700">${esc(r.number)}</td>
+        <td contenteditable="true" spellcheck="true" class="col-name">${esc(r.name)}</td>
+        <td contenteditable="true" spellcheck="false" style="color:var(--muted)">${esc(r.number)}</td>
+        <td contenteditable="true" spellcheck="true" class="col-name" style="color:var(--muted)">${esc(r.name)}</td>
+        <td contenteditable="true" spellcheck="true" class="col-cue">${r.cue ? esc(r.cue) : ''}</td>
+        <td contenteditable="true" spellcheck="true" style="color:var(--muted)"></td>
+        <td class="col-len">
+          <span class="len-count">${cueLen}</span>
+          <span class="len-formula">=LEN(E${rowNum})</span>
+        </td>`;
+
+      // Keep count live as cue is edited
+      const cueCell = tr.querySelector('.col-cue');
+      const lenCount = tr.querySelector('.len-count');
+      cueCell.addEventListener('input', () => {
+        lenCount.textContent = cueCell.textContent.length;
+      });
+
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -511,6 +587,7 @@
         tab.classList.add('active');
         rightBody.innerHTML = '';
         rightBody.appendChild(views[tab.dataset.tab]);
+        if (tab.dataset.tab === 'preview') syncRowHeights();
       });
     });
 
@@ -527,8 +604,9 @@
     btnSync.disabled = true;
     setStatus(`Syncing to ${showType} sheet…`, 'loading');
 
+    const rows = getActiveRows();
     const fd = new FormData();
-    fd.append('file', selectedFile);
+    fd.append('rows', JSON.stringify(rows));
     fd.append('show_type', showType);
 
     try {
@@ -544,8 +622,6 @@
       const r = syncResultData.removed.length;
       setStatus(`Synced to ${showType}: +${a} added, ${u} updated, ${r} removed`, 'success');
 
-      btnDownload.style.display = 'block';
-
       const previewEl  = parsedRows ? renderExcelTable(parsedRows) : document.createElement('div');
       const resultsEl  = renderSyncResults(syncResultData);
       setupRightTabs(previewEl, resultsEl);
@@ -556,23 +632,96 @@
     }
   });
 
+  // ── Read edited table rows from DOM ───────────────────────────
+  function getActiveRows() {
+    const table = rightBody.querySelector('.xl-table');
+    if (!table) return parsedRows;
+    const result = [];
+    table.querySelectorAll('tbody tr').forEach(tr => {
+      const cells = tr.querySelectorAll('td');
+      result.push({
+        number: cells[1].textContent.trim(),
+        name:   cells[2].textContent.trim(),
+        cue:    cells[5].textContent.trim(),
+      });
+    });
+    return result;
+  }
+
+  // ── Row height sync + scroll sync ─────────────────────────────
+  let scrollSyncing = false;
+
+  leftBody.addEventListener('scroll', () => {
+    if (scrollSyncing) return;
+    scrollSyncing = true;
+    rightBody.scrollTop = leftBody.scrollTop;
+    scrollSyncing = false;
+  });
+  rightBody.addEventListener('scroll', () => {
+    if (scrollSyncing) return;
+    scrollSyncing = true;
+    leftBody.scrollTop = rightBody.scrollTop;
+    scrollSyncing = false;
+  });
+
+  function syncRowHeights() {
+    requestAnimationFrame(() => {
+      const leftCards = Array.from(leftBody.querySelectorAll('.section-card'));
+      const rightRows = Array.from(rightBody.querySelectorAll('.xl-table tbody tr'));
+      const spacer    = document.getElementById('doc-header-spacer');
+      if (!leftCards.length || !rightRows.length) return;
+
+      leftCards.forEach(c => c.style.height = 'auto');
+      rightRows.forEach(r => r.style.height = 'auto');
+      if (spacer) spacer.style.height = 'auto';
+
+      requestAnimationFrame(() => {
+        // Match spacer height to the Excel thead so row 1 aligns
+        const thead = rightBody.querySelector('.xl-table thead');
+        if (spacer && thead) spacer.style.height = thead.offsetHeight + 'px';
+
+        const len = Math.min(leftCards.length, rightRows.length);
+        for (let i = 0; i < len; i++) {
+          const maxH = Math.max(leftCards[i].offsetHeight, rightRows[i].offsetHeight);
+          leftCards[i].style.height = maxH + 'px';
+          rightRows[i].style.height = maxH + 'px';
+        }
+      });
+    });
+  }
+
+  // ── Preview XLS ────────────────────────────────────────────────
+  btnPreview.addEventListener('click', () => {
+    if (!parsedRows) return;
+    rightTabs.style.display  = 'none';
+    rightLabel.style.display = 'inline';
+    rightLabel.textContent   = '📊 Excel Preview';
+    rightBody.innerHTML      = '';
+    rightBody.appendChild(renderExcelTable(parsedRows));
+    syncRowHeights();
+  });
+
   // ── Download .xlsx ─────────────────────────────────────────────
   btnDownload.addEventListener('click', async () => {
-    if (!selectedFile) return;
+    if (!parsedRows) return;
     btnDownload.disabled = true;
     btnDownload.textContent = 'Generating…';
 
-    const fd = new FormData();
-    fd.append('file', selectedFile);
+    const rows = getActiveRows();
+    const baseName = selectedFile ? selectedFile.name.replace(/\.docx$/i, '') : 'output';
 
     try {
-      const res = await fetch('/upload', { method: 'POST', body: fd });
+      const res = await fetch('/download-rows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows, filename: baseName }),
+      });
       if (!res.ok) throw new Error((await res.json().catch(() => ({detail:res.statusText}))).detail);
 
       const blob = await res.blob();
       const disp = res.headers.get('Content-Disposition') || '';
-      const m = disp.match(/filename="?([^"]+)"?/);
-      const filename = m ? m[1] : selectedFile.name.replace('.docx', '_output.xlsx');
+      const m    = disp.match(/filename="?([^"]+)"?/);
+      const filename = m ? m[1] : `${baseName}_output.xlsx`;
 
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
