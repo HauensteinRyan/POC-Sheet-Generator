@@ -34,8 +34,9 @@
       background: var(--surface);
       display: flex; align-items: center; gap: 12px; flex-shrink: 0;
     }
-    header h1 { font-size: 15px; font-weight: 600; }
-    header .tagline { font-size: 12px; color: var(--muted); }
+    .header-logos { display: flex; align-items: center; gap: 20px; }
+    .header-logos img { height: 32px; width: auto; }
+    .header-divider { width: 2px; height: 24px; background: #9CA3AF; flex-shrink: 0; }
 
     .columns {
       display: grid;
@@ -252,8 +253,11 @@
 <div class="app">
 
   <header>
-    <h1>POC Sheet Generator</h1>
-    <span class="tagline">Upload a UFC script doc → sync to Google Sheets</span>
+    <div class="header-logos">
+      <img src="/static/logos/3027.png" alt="3027" />
+      <div class="header-divider"></div>
+      <img src="/static/logos/prusik.png" alt="Prusik" />
+    </div>
   </header>
 
   <div class="columns">
