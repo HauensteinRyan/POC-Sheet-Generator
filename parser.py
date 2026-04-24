@@ -49,14 +49,21 @@ def parse_doc(path: str) -> list[dict]:
 
     def flush(number, name, lines):
         # Normalize non-breaking spaces; strip leading ": " artifact from lines
-        cleaned = []
+        body = []
+        phonetic = []
         for l in lines:
             l = l.replace("\xa0", " ")
             l = re.sub(r"^:\s+", "", l)
-            if l:
-                cleaned.append(l)
-        cue = " ".join(cleaned)
-        rows.append({"number": number, "name": name, "cue": cue.upper()})
+            if not l:
+                continue
+            if _PHONETIC_RE.match(l):
+                phonetic.append(l)
+            else:
+                body.append(l)
+        cue = " ".join(body).upper()
+        if phonetic:
+            cue = cue + "\n" + " ".join(phonetic).upper()
+        rows.append({"number": number, "name": name, "cue": cue})
 
     def start_section(number_str: str, name_str: str):
         nonlocal current_number, current_name, cue_lines, variant_count
