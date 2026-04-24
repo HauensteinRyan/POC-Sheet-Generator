@@ -183,16 +183,39 @@ def sync_rows(rows: list[dict], sheet_type: str) -> dict:
             "wrapStrategy": "WRAP",
         })
         # Auto-resize all data rows to fit wrapped content in column E
-        ws.spreadsheet.batch_update({"requests": [{
-            "autoResizeDimensions": {
-                "dimensions": {
-                    "sheetId": ws.id,
-                    "dimension": "ROWS",
-                    "startIndex": 1,
-                    "endIndex": total_rows,
+        # Also auto-resize columns B (idx 1) and D (idx 3) to fit full text
+        ws.spreadsheet.batch_update({"requests": [
+            {
+                "autoResizeDimensions": {
+                    "dimensions": {
+                        "sheetId": ws.id,
+                        "dimension": "ROWS",
+                        "startIndex": 1,
+                        "endIndex": total_rows,
+                    }
                 }
-            }
-        }]})
+            },
+            {
+                "autoResizeDimensions": {
+                    "dimensions": {
+                        "sheetId": ws.id,
+                        "dimension": "COLUMNS",
+                        "startIndex": 1,  # Column B
+                        "endIndex": 2,
+                    }
+                }
+            },
+            {
+                "autoResizeDimensions": {
+                    "dimensions": {
+                        "sheetId": ws.id,
+                        "dimension": "COLUMNS",
+                        "startIndex": 3,  # Column D
+                        "endIndex": 4,
+                    }
+                }
+            },
+        ]})
 
     return {"added": added, "updated": updated, "removed": removed}
 
