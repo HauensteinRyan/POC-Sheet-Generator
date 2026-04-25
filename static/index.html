@@ -151,6 +151,7 @@
 
     .btn-preview, .btn-download {
       display: none; width: 100%; min-height: 34px; padding: 0 14px;
+      align-items: center; justify-content: center; gap: 8px;
       border: 1px solid #505050; border-radius: 6px;
       background: #2b2b2b; color: #f2f2f2;
       font-size: 13px; font-weight: 800;
@@ -352,14 +353,14 @@
       </div>
 
       <button class="btn-sync" id="btn-sync">Sync to Sheets</button>
-      <button class="btn-preview" id="btn-preview" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+      <button class="btn-preview" id="btn-preview">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
           <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
         </svg>
         Preview .xlsx
       </button>
-      <button class="btn-download" id="btn-download" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+      <button class="btn-download" id="btn-download">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 3V16M12 16L7 11M12 16L17 11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <line x1="4" y1="20" x2="20" y2="20" stroke="white" stroke-width="2" stroke-linecap="round"/>
@@ -466,9 +467,9 @@
     fbName.textContent    = file.name;
     fileBadge.style.display   = 'flex';
     showToggle.style.display  = 'block';
-    btnSync.style.display     = 'block';
-    btnPreview.style.display  = 'block';
-    btnDownload.style.display = 'block';
+    btnSync.style.display     = 'flex';
+    btnPreview.style.display  = 'flex';
+    btnDownload.style.display = 'flex';
 
     // Reset right panel
     showRightPlaceholder();
