@@ -82,6 +82,12 @@ async def index():
     return FileResponse("static/index.html")
 
 
+@app.get("/view")
+@app.get("/view/{sheet_type}")
+async def view_sheet(sheet_type: str = "ppv"):
+    return FileResponse("static/view.html")
+
+
 @app.get("/config-status")
 async def config_status():
     """Let the frontend know which show types are ready to sync."""

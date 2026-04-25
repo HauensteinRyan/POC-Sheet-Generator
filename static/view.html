@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POC Sheet Generator — View</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f0f0f;
+      --surface: #161616;
+      --border:  #2a2a2a;
+      --gold:    #d4a017;
+      --text:    #e8e8e8;
+      --muted:   #666;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px; display: flex; flex-direction: column; }
+
+    header {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; gap: 16px;
+    }
+
+    .header-logos { display: flex; align-items: center; gap: 14px; }
+    .header-logos img { height: 22px; width: auto; }
+    .header-divider { width: 2px; height: 16px; background: #9CA3AF; flex-shrink: 0; }
+    .header-version { font-size: 10px; font-weight: 500; color: #4B5563; letter-spacing: 0.05em;
+      align-self: flex-end; transform: translate(-7px, -3px); }
+    .header-title-divider { width: 1px; height: 22px; background: var(--border); margin: 0 8px; }
+    .header-title { font-size: 22px; font-weight: 700; color: #ffffff; }
+
+    .sheet-tabs { display: flex; gap: 0; flex-shrink: 0; }
+    .sheet-tab {
+      padding: 7px 18px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .sheet-tab:first-child { border-radius: 6px 0 0 6px; }
+    .sheet-tab:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
+    .sheet-tab.active      { background: var(--gold); color: #000; border-color: var(--gold); }
+
+    .sheet-frame { flex: 1; border: none; display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-logos">
+      <img src="/static/logos/3027.png" alt="3027" />
+      <div class="header-divider"></div>
+      <img src="/static/logos/prusik.png" alt="Prusik" />
+      <span class="header-version">v1.0</span>
+      <div class="header-title-divider"></div>
+      <span class="header-title">POC Sheet Generator</span>
+    </div>
+    <div class="sheet-tabs">
+      <button class="sheet-tab" data-type="PPV">PPV</button>
+      <button class="sheet-tab" data-type="FN">FN</button>
+    </div>
+  </header>
+
+  <iframe id="sheet-frame" class="sheet-frame" allowfullscreen></iframe>
+
+  <script>
+    const URLS = {
+      PPV: 'https://docs.google.com/spreadsheets/d/1Ul2YnLUN4QQ_AO3BOBhnRYBar2wYUr6DhLRc5ZMB1-Y/edit?usp=sharing',
+      FN:  'https://docs.google.com/spreadsheets/d/1wwiviOwd4jnEjtSWFwww_IkPp4ON0yQrnLkFHArsuhA/edit?usp=sharing',
+    };
+
+    const frame = document.getElementById('sheet-frame');
+    const tabs  = document.querySelectorAll('.sheet-tab');
+
+    function loadSheet(type) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.type === type));
+      frame.src = URLS[type];
+      history.replaceState(null, '', `/view/${type.toLowerCase()}`);
+    }
+
+    tabs.forEach(tab => tab.addEventListener('click', () => loadSheet(tab.dataset.type)));
+
+    // Load from URL path or default to PPV
+    const pathType = location.pathname.split('/').pop().toUpperCase();
+    loadSheet(URLS[pathType] ? pathType : 'PPV');
+  </script>
+</body>
+</html>
