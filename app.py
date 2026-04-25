@@ -83,8 +83,7 @@ async def index():
 
 
 @app.get("/view")
-@app.get("/view/{sheet_type}")
-async def view_sheet(sheet_type: str = "ppv"):
+async def view_sheet():
     return FileResponse("static/view.html")
 
 
