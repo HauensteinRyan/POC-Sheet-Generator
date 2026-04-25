@@ -333,7 +333,11 @@
     <div class="mid-col">
 
       <div class="file-badge" id="file-badge">
-        <div class="fb-icon">📎</div>
+        <div class="fb-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21.44 11.05L12.25 20.24C11.12 21.37 9.59 22 7.99 22C6.39 22 4.86 21.37 3.73 20.24C2.6 19.11 1.97 17.58 1.97 15.98C1.97 14.38 2.6 12.85 3.73 11.72L12.92 2.53C13.68 1.77 14.71 1.34 15.79 1.34C16.87 1.34 17.9 1.77 18.66 2.53C19.42 3.29 19.85 4.32 19.85 5.4C19.85 6.48 19.42 7.51 18.66 8.27L9.46 17.46C9.08 17.84 8.57 18.06 8.03 18.06C7.49 18.06 6.98 17.84 6.6 17.46C6.22 17.08 6 16.57 6 16.03C6 15.49 6.22 14.98 6.6 14.6L15.07 6.14" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
         <div class="fb-name" id="fb-name"></div>
         <div class="fb-clear" id="fb-clear">Remove file</div>
       </div>
@@ -348,8 +352,20 @@
       </div>
 
       <button class="btn-sync" id="btn-sync">Sync to Sheets</button>
-      <button class="btn-preview" id="btn-preview">👁 Preview XLS</button>
-      <button class="btn-download" id="btn-download">⬇ Download .xlsx</button>
+      <button class="btn-preview" id="btn-preview" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+        </svg>
+        Preview .xlsx
+      </button>
+      <button class="btn-download" id="btn-download" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 3V16M12 16L7 11M12 16L17 11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="4" y1="20" x2="20" y2="20" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Download .xlsx
+      </button>
 
       <div id="status-msg">Select a .docx to begin</div>
 
