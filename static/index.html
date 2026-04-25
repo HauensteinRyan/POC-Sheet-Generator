@@ -594,9 +594,16 @@
 
       const cueCell = tr.querySelector('.col-cue');
       const lenCount = tr.querySelector('.len-count');
-      cueCell.addEventListener('input', () => {
-        lenCount.textContent = cueCell.textContent.length;
-      });
+      const lenCell  = tr.querySelector('.col-len');
+      function updateLen() {
+        const n = cueCell.textContent.length;
+        lenCount.textContent = n;
+        if (n < 430)       { lenCell.style.background = 'rgba(13,127,89,0.35)';  lenCount.style.color = '#5debb0'; }
+        else if (n <= 509) { lenCell.style.background = 'rgba(210,174,75,0.30)'; lenCount.style.color = '#f0d060'; }
+        else               { lenCell.style.background = 'rgba(210,10,10,0.35)';  lenCount.style.color = '#ff7070'; }
+      }
+      updateLen();
+      cueCell.addEventListener('input', updateLen);
 
       tbody.appendChild(tr);
     });
