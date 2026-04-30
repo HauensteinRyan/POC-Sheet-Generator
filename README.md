@@ -42,6 +42,11 @@ Auth is shared with `celeb-sheet-api` through the `pm_session` cookie on `.prusi
 
 These are declared in `wrangler.jsonc` so Cloudflare Workers Builds keeps them on Git deploys.
 
+Sheet target suggestions use Google Drive metadata to list spreadsheets shared with the service account. Enable both APIs in the Google Cloud project that owns the service account:
+
+- Google Sheets API
+- Google Drive API
+
 ### Git deploy setup
 
 In Cloudflare, keep the Worker connected to the GitHub repo:

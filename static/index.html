@@ -375,7 +375,8 @@
 
       <div class="sheet-target" id="sheet-target">
         <label for="sheet-id-input">Google Sheet</label>
-        <input id="sheet-id-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste sheet URL or ID" />
+        <input id="sheet-id-input" type="text" list="sheet-target-options" autocomplete="off" spellcheck="false" placeholder="Paste sheet URL or ID" />
+        <datalist id="sheet-target-options"></datalist>
         <div class="sheet-target-status" id="sheet-target-status"></div>
       </div>
 
@@ -439,6 +440,7 @@
   let showType     = 'PPV';
   let syncResultData = null;
   let csrfToken = null;
+  let sheetTargetsLoaded = false;
   const SHEET_TARGETS_KEY = 'poc-sheet-generator.sheetTargets.v1';
   const APP_BASE = location.pathname === '/poc-sheet' || location.pathname.startsWith('/poc-sheet/') ? '/poc-sheet' : '';
   const appUrl = path => `${APP_BASE}${path}`;
@@ -452,6 +454,7 @@
   const showToggle  = document.getElementById('show-toggle');
   const sheetTarget = document.getElementById('sheet-target');
   const sheetIdInput = document.getElementById('sheet-id-input');
+  const sheetTargetOptions = document.getElementById('sheet-target-options');
   const sheetTargetStatus = document.getElementById('sheet-target-status');
   const btnSync     = document.getElementById('btn-sync');
   const btnPreview  = document.getElementById('btn-preview');
@@ -523,8 +526,42 @@
 
   function updateSheetTargetStatus() {
     const id = extractSpreadsheetId(sheetIdInput.value);
-    sheetTargetStatus.textContent = id ? `${showType} target set` : `${showType} target required`;
+    if (id) {
+      sheetTargetStatus.textContent = `${showType} target set`;
+    } else if (sheetTargetOptions.children.length) {
+      sheetTargetStatus.textContent = `${sheetTargetOptions.children.length} shared Sheets available`;
+    } else {
+      sheetTargetStatus.textContent = sheetTargetsLoaded ? 'No shared Sheets found' : `${showType} target required`;
+    }
     btnSync.disabled = !id || !parsedRows;
+  }
+
+  async function loadSheetTargetOptions() {
+    if (sheetTargetsLoaded) return;
+    sheetTargetsLoaded = true;
+    try {
+      const res = await fetch(appUrl('/sheet-targets'), { credentials: 'include' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({detail: res.statusText}))).detail);
+      const data = await res.json();
+      const targets = Array.isArray(data.targets) ? data.targets : [];
+      sheetTargetOptions.innerHTML = '';
+      targets.forEach(target => {
+        const option = document.createElement('option');
+        option.value = target.url || target.id;
+        option.label = target.name || target.id;
+        sheetTargetOptions.appendChild(option);
+      });
+      if (!extractSpreadsheetId(sheetIdInput.value) && targets.length === 1) {
+        sheetIdInput.value = targets[0].url || targets[0].id;
+        const savedTargets = getSheetTargets();
+        savedTargets[showType] = sheetIdInput.value.trim();
+        localStorage.setItem(SHEET_TARGETS_KEY, JSON.stringify(savedTargets));
+      }
+    } catch (e) {
+      sheetTargetStatus.textContent = `Sheet lookup unavailable: ${e.message}`;
+    } finally {
+      updateSheetTargetStatus();
+    }
   }
 
   function extractSpreadsheetId(value) {
@@ -561,6 +598,7 @@
 
     setStatus('Parsing document…', 'loading');
     loadSheetTargetInput();
+    loadSheetTargetOptions();
     loadDocPreview(file);
   }
 

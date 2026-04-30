@@ -7,6 +7,12 @@ type ParsedRow = {
   cue: string;
 };
 
+type SheetTarget = {
+  id: string;
+  name: string;
+  url: string;
+};
+
 type SyncResult = {
   added: string[];
   updated: string[];
@@ -44,7 +50,10 @@ type ServiceAccount = {
 };
 
 const HEADERS = ["", "Name", "Promo Number", "Promo Name", "Cue", "Notes", "Character"];
-const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+const SCOPES = [
+  "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/drive.metadata.readonly",
+].join(" ");
 
 const HEADER_RE = /^\s*#?\s*(\d+)\s*[–-]\s*(.+)$/;
 const VARIANT_RE = /^\s*(ALT\s+READ|Prelim\s+read|Main\s+Card\s+read)\s*$/i;
@@ -116,6 +125,10 @@ async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext)
 
   if (path === "/config-status" && request.method === "GET") {
     return json({ warnings: validateConfig(env) });
+  }
+
+  if (path === "/sheet-targets" && request.method === "GET") {
+    return json({ targets: await listSheetTargets(env) });
   }
 
   if (path === "/parse" && request.method === "POST") {
@@ -633,6 +646,35 @@ async function syncRows(rows: ParsedRow[], spreadsheetId: string, env: Env): Pro
   }
 
   return { added, updated, removed };
+}
+
+async function listSheetTargets(env: Env): Promise<SheetTarget[]> {
+  const token = await getGoogleAccessToken(env);
+  const params = new URLSearchParams({
+    pageSize: "50",
+    orderBy: "modifiedTime desc",
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+    fields: "files(id,name,webViewLink)",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new HttpError(`Google Drive target lookup failed: ${detail || response.statusText}`, 503);
+  }
+  const data = await response.json() as {
+    files?: Array<{ id?: string; name?: string; webViewLink?: string }>;
+  };
+  return (data.files || [])
+    .filter((file): file is { id: string; name?: string; webViewLink?: string } => Boolean(file.id))
+    .map((file) => ({
+      id: file.id,
+      name: file.name || file.id,
+      url: file.webViewLink || `https://docs.google.com/spreadsheets/d/${file.id}`,
+    }));
 }
 
 class SheetsClient {
