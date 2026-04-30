@@ -6,10 +6,27 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "poc-sheet.3027apps.prusikmedia.com",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./static",
     "binding": "ASSETS",
     "run_worker_first": true
+  },
+  "services": [
+    {
+      "binding": "AUTH_SERVICE",
+      "service": "celeb-sheet-api",
+      "remote": true
+    }
+  ],
+  "vars": {
+    "AUTH_PUBLIC_BASE": "https://celeb-sheet-api.prusikmedia.com",
+    "AUTH_APP_KEY": "poc-sheet-generator"
   },
   "observability": {
     "enabled": true,

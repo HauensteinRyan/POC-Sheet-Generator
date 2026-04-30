@@ -13,13 +13,36 @@ type SyncResult = {
   removed: string[];
 };
 
+type AuthApplication = {
+  appKey: string;
+  isActive: boolean;
+};
+
+type AuthUser = {
+  id: string;
+  username: string;
+  role: "admin" | "viewer";
+  apps: AuthApplication[];
+};
+
+type SharedSession =
+  | {
+      ok: true;
+      user: AuthUser;
+      csrfToken: string;
+    }
+  | {
+      ok: false;
+      status: 401 | 403;
+      detail: string;
+    };
+
 type ServiceAccount = {
   client_email: string;
   private_key: string;
   token_uri?: string;
 };
 
-const COOKIE_NAME = "poc_session";
 const HEADERS = ["", "Name", "Promo Number", "Promo Name", "Cue", "Notes", "Character"];
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -54,25 +77,33 @@ async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext)
   }
 
   if (path === "/login" && request.method === "GET") {
-    return serveAsset(env, request, "/login");
-  }
-
-  if (path === "/auth/login" && request.method === "POST") {
-    return login(request, env);
+    return redirectToSharedLogin(request, env);
   }
 
   if (path === "/auth/logout" && request.method === "GET") {
-    return new Response(null, {
-      status: 303,
-      headers: {
-        Location: "/login",
-        "Set-Cookie": `${COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`,
-      },
+    return redirectToSharedLogin(request, env);
+  }
+
+  const session = await getSharedSession(request, env);
+
+  if (path === "/auth/me" && request.method === "GET") {
+    if (!session.ok) {
+      return json({ detail: session.detail }, session.status);
+    }
+    return json({
+      user: session.user,
+      csrfToken: session.csrfToken,
     });
   }
 
-  if (!(await verifyToken(getCookie(request, COOKIE_NAME), env))) {
-    return new Response(null, { status: 303, headers: { Location: "/login" } });
+  if (!session.ok) {
+    if (request.method === "GET" || request.method === "HEAD") {
+      if (session.status === 401) {
+        return redirectToSharedLogin(request, env);
+      }
+      return html("Restricted", "You do not have access to this application.", 403);
+    }
+    return json({ detail: session.detail }, session.status);
   }
 
   if (path === "/" && request.method === "GET") {
@@ -88,12 +119,14 @@ async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext)
   }
 
   if (path === "/parse" && request.method === "POST") {
+    requireCsrf(request, session.csrfToken);
     const file = await getDocxFile(request);
     const rows = await parseDocx(await file.arrayBuffer());
     return json({ rows, count: rows.length });
   }
 
   if (path === "/upload" && request.method === "POST") {
+    requireCsrf(request, session.csrfToken);
     const file = await getDocxFile(request);
     const rows = await parseDocx(await file.arrayBuffer());
     const bytes = await writeXlsx(rows);
@@ -102,6 +135,7 @@ async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext)
   }
 
   if (path === "/download-rows" && request.method === "POST") {
+    requireCsrf(request, session.csrfToken);
     const payload = await request.json() as unknown;
     const rows = validateRows((payload as { rows?: unknown }).rows);
     const filename = sanitizeFilename(String((payload as { filename?: unknown }).filename || "output"));
@@ -109,6 +143,7 @@ async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext)
   }
 
   if (path === "/sync" && request.method === "POST") {
+    requireCsrf(request, session.csrfToken);
     const form = await request.formData();
     const rowsRaw = String(form.get("rows") || "");
     const showType = String(form.get("show_type") || "").toUpperCase();
@@ -147,99 +182,65 @@ async function serveAsset(env: Env, request: Request, assetPath: string): Promis
   return env.ASSETS.fetch(new Request(url.toString(), request));
 }
 
-async function login(request: Request, env: Env): Promise<Response> {
-  const form = await request.formData();
-  const username = String(form.get("username") || "");
-  const password = String(form.get("password") || "");
+function authPublicBase(env: Env): string {
+  return (env.AUTH_PUBLIC_BASE || "https://celeb-sheet-api.prusikmedia.com").replace(/\/$/, "");
+}
 
-  if (!(await verifyCredentials(username, password, env))) {
-    return new Response(null, { status: 303, headers: { Location: "/login?error=1" } });
-  }
+function authAppKey(env: Env): string {
+  return env.AUTH_APP_KEY || "poc-sheet-generator";
+}
 
-  const token = await makeToken(username, env);
+function redirectToSharedLogin(request: Request, env: Env): Response {
+  const loginUrl = new URL("/login", authPublicBase(env));
+  loginUrl.searchParams.set("returnTo", request.url);
   return new Response(null, {
     status: 303,
-    headers: {
-      Location: "/",
-      "Set-Cookie": `${COOKIE_NAME}=${token}; HttpOnly; Path=/; SameSite=Lax`,
-    },
+    headers: { Location: loginUrl.toString() },
   });
 }
 
-async function verifyCredentials(username: string, password: string, env: Env): Promise<boolean> {
-  const users = parseUsers(env);
-  const stored = users[username];
-  if (stored === undefined) {
-    return false;
+async function getSharedSession(request: Request, env: Env): Promise<SharedSession> {
+  const headers = new Headers();
+  const cookie = request.headers.get("Cookie");
+  if (cookie) {
+    headers.set("Cookie", cookie);
   }
-  return timingSafeEqual(stored, password);
-}
 
-function parseUsers(env: Env): Record<string, string> {
-  const raw = env.APP_USERS_JSON || "";
-  if (!raw) {
-    return {};
+  const authRequest = new Request(`${authPublicBase(env)}/api/me`, {
+    method: "GET",
+    headers,
+  });
+  const response = await env.AUTH_SERVICE.fetch(authRequest);
+
+  if (response.status === 401) {
+    return { ok: false, status: 401, detail: "Authentication required" };
   }
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.entries(parsed).map(([key, value]) => [key, String(value)]),
-    );
-  } catch {
-    return {};
+  if (!response.ok) {
+    return { ok: false, status: 403, detail: "Unable to verify shared authentication" };
   }
-}
 
-async function makeToken(username: string, env: Env): Promise<string> {
-  const sig = await hmacHex(username, sessionSecret(env));
-  return `${sig}.${username}`;
-}
-
-async function verifyToken(token: string | null, env: Env): Promise<string | null> {
-  if (!token || !token.includes(".")) {
-    return null;
+  const payload = await response.json() as { user?: AuthUser; csrfToken?: string };
+  if (!payload.user || !payload.csrfToken) {
+    return { ok: false, status: 403, detail: "Invalid shared authentication response" };
   }
-  const [sig, ...rest] = token.split(".");
-  const username = rest.join(".");
-  const expected = await hmacHex(username, sessionSecret(env));
-  return (await timingSafeEqual(sig, expected)) ? username : null;
-}
 
-function sessionSecret(env: Env): string {
-  return env.SESSION_SECRET || "local-development-secret-change-before-deploy";
-}
-
-async function hmacHex(message: string, secret: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    utf8(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, utf8(message));
-  return hex(sig);
-}
-
-async function timingSafeEqual(a: string, b: string): Promise<boolean> {
-  const da = new Uint8Array(await crypto.subtle.digest("SHA-256", utf8(a)));
-  const db = new Uint8Array(await crypto.subtle.digest("SHA-256", utf8(b)));
-  let diff = da.length ^ db.length;
-  for (let i = 0; i < Math.max(da.length, db.length); i += 1) {
-    diff |= (da[i] || 0) ^ (db[i] || 0);
+  if (payload.user.role === "admin") {
+    return { ok: true, user: payload.user, csrfToken: payload.csrfToken };
   }
-  return diff === 0;
+
+  const appKey = authAppKey(env);
+  const hasAccess = payload.user.apps?.some((app) => app.appKey === appKey && app.isActive);
+  if (!hasAccess) {
+    return { ok: false, status: 403, detail: "You do not have access to this application" };
+  }
+
+  return { ok: true, user: payload.user, csrfToken: payload.csrfToken };
 }
 
-function getCookie(request: Request, name: string): string | null {
-  const cookie = request.headers.get("Cookie") || "";
-  for (const part of cookie.split(";")) {
-    const [key, ...valueParts] = part.trim().split("=");
-    if (key === name) {
-      return valueParts.join("=");
-    }
+function requireCsrf(request: Request, csrfToken: string): void {
+  if (request.headers.get("X-CSRF-Token") !== csrfToken) {
+    throw new HttpError("Invalid CSRF token.", 403);
   }
-  return null;
 }
 
 async function getDocxFile(request: Request): Promise<File> {
@@ -858,12 +859,6 @@ function validateConfig(env: Env): string[] {
   if (!env.GOOGLE_SERVICE_ACCOUNT_JSON) {
     warnings.push("Google Sheets: GOOGLE_SERVICE_ACCOUNT_JSON secret not configured");
   }
-  if (!env.APP_USERS_JSON) {
-    warnings.push("Auth: APP_USERS_JSON secret not configured");
-  }
-  if (!env.SESSION_SECRET) {
-    warnings.push("Auth: SESSION_SECRET secret not configured");
-  }
   return warnings;
 }
 
@@ -890,6 +885,50 @@ function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+function html(title: string, message: string, status = 200): Response {
+  return new Response(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${xmlEscape(title)}</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0f0f0f;
+        color: #f2f2f2;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(420px, calc(100vw - 32px));
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 28px;
+      }
+      p {
+        margin: 0;
+        color: #a8a8a8;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>${xmlEscape(title)}</h1>
+      <p>${xmlEscape(message)}</p>
+    </main>
+  </body>
+</html>`, {
+    status,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 }
 

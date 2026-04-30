@@ -1,7 +1,8 @@
 declare global {
   interface Env {
-    SESSION_SECRET?: string;
-    APP_USERS_JSON?: string;
+    AUTH_SERVICE: Fetcher;
+    AUTH_PUBLIC_BASE?: string;
+    AUTH_APP_KEY?: string;
     GOOGLE_SERVICE_ACCOUNT_JSON?: string;
   }
 }
