@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev:worker": "wrangler dev",
+    "build": "npm run typecheck",
     "deploy": "wrangler deploy",
     "cf:check": "wrangler deploy --dry-run",
     "cf:types": "wrangler types",
