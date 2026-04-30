@@ -6,14 +6,14 @@ Converts UFC promo script Word docs (.docx) into Excel spreadsheets (.xlsx) matc
 
 This repo now includes a Cloudflare Worker migration that keeps the same browser-facing routes as the FastAPI app:
 
-- `GET /`, `GET /login`, `GET /view`
+- `GET /`, `GET /login`, `GET /view`, `GET /auth/me`
 - `POST /parse`
 - `POST /upload`
 - `POST /download-rows`
 - `POST /sync`
 - `GET /config-status`
 
-Cloudflare serves the files in `static/` through the Worker assets binding, while `src/worker.ts` handles auth, `.docx` parsing, `.xlsx` generation, and Google Sheets sync.
+Cloudflare serves the files in `static/` through the Worker assets binding, while `src/worker.ts` enforces the shared 3027 Apps auth session, `.docx` parsing, `.xlsx` generation, and Google Sheets sync.
 
 ### Local Worker dev
 
@@ -29,28 +29,28 @@ npm run dev:worker
 Set these in Cloudflare before production deploys:
 
 ```bash
-npx wrangler secret put SESSION_SECRET
-npx wrangler secret put APP_USERS_JSON
 npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
-```
-
-`APP_USERS_JSON` should look like:
-
-```json
-{"admin":"change-this-password"}
 ```
 
 `GOOGLE_SERVICE_ACCOUNT_JSON` should be the full service account JSON key as a single secret value. The target spreadsheet ID is configured inside the app by pasting a Google Sheets URL or spreadsheet ID into the Google Sheet field; the browser remembers separate PPV and FN targets.
 
+Auth is shared with `celeb-sheet-api` through the `pm_session` cookie on `.prusikmedia.com`. The production Worker expects:
+
+- Custom domain: `poc-sheet.3027apps.prusikmedia.com`
+- Service binding: `AUTH_SERVICE -> celeb-sheet-api`
+- Vars: `AUTH_PUBLIC_BASE=https://celeb-sheet-api.prusikmedia.com`, `AUTH_APP_KEY=poc-sheet-generator`
+
+These are declared in `wrangler.jsonc` so Cloudflare Workers Builds keeps them on Git deploys.
+
 ### Git deploy setup
 
-In Cloudflare, create a Worker connected to the GitHub repo:
+In Cloudflare, keep the Worker connected to the GitHub repo:
 
 1. Workers & Pages -> Create -> Import a repository.
 2. Select `prusik-haulbag/poc-sheet-generator`.
-3. Use `npm install` as the install command.
-4. Use `npm run deploy` as the deploy command if Cloudflare asks for one.
-5. Set the three secrets above in the Worker settings.
+3. Use `npm run build` as the build command.
+4. Use `npx wrangler deploy` as the deploy command.
+5. Set `GOOGLE_SERVICE_ACCOUNT_JSON` in the Worker settings when Sheets sync should be enabled.
 
 After that, pushes to the connected branch can deploy the Worker.
 
