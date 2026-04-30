@@ -10,6 +10,10 @@
     {
       "pattern": "poc-sheet.3027apps.prusikmedia.com",
       "custom_domain": true
+    },
+    {
+      "pattern": "3027apps.prusikmedia.com/poc-sheet*",
+      "zone_name": "prusikmedia.com"
     }
   ],
   "assets": {

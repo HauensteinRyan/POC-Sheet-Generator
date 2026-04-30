@@ -70,7 +70,7 @@ export default {
 
 async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
-  const path = url.pathname;
+  const path = normalizePath(url.pathname);
 
   if (path.startsWith("/static/")) {
     return serveAsset(env, request, path.replace(/^\/static/, "") || "/index.html");
@@ -173,6 +173,16 @@ async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext)
   }
 
   return new Response("Not found", { status: 404 });
+}
+
+function normalizePath(pathname: string): string {
+  if (pathname === "/poc-sheet") {
+    return "/";
+  }
+  if (pathname.startsWith("/poc-sheet/")) {
+    return pathname.slice("/poc-sheet".length) || "/";
+  }
+  return pathname;
 }
 
 async function serveAsset(env: Env, request: Request, assetPath: string): Promise<Response> {

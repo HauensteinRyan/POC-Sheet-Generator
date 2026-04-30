@@ -440,6 +440,8 @@
   let syncResultData = null;
   let csrfToken = null;
   const SHEET_TARGETS_KEY = 'poc-sheet-generator.sheetTargets.v1';
+  const APP_BASE = location.pathname === '/poc-sheet' || location.pathname.startsWith('/poc-sheet/') ? '/poc-sheet' : '';
+  const appUrl = path => `${APP_BASE}${path}`;
 
   // ── Element refs ───────────────────────────────────────────────
   const dropZone    = document.getElementById('drop-zone');
@@ -462,12 +464,12 @@
   const rightLabel  = document.getElementById('right-header-label');
   const configWarn  = document.getElementById('config-warn');
 
-  const authReady = fetch('/auth/me', { credentials: 'include' }).then(async r => {
+  const authReady = fetch(appUrl('/auth/me'), { credentials: 'include' }).then(async r => {
     if (!r.ok) throw new Error('Authentication required');
     const data = await r.json();
     csrfToken = data.csrfToken;
   }).catch(() => {
-    window.location.href = '/login';
+    window.location.href = appUrl('/login');
   });
 
   async function csrfHeaders(extra = {}) {
@@ -476,7 +478,7 @@
   }
 
   // ── Config status (check on load) ─────────────────────────────
-  fetch('/config-status').then(r => r.json()).then(({ warnings }) => {
+  fetch(appUrl('/config-status')).then(r => r.json()).then(({ warnings }) => {
     if (warnings.length) {
       configWarn.style.display = 'block';
       configWarn.textContent = '⚠ ' + warnings.join(' · ');
@@ -586,7 +588,7 @@
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch('/parse', { method: 'POST', body: fd, headers: await csrfHeaders() });
+      const res = await fetch(appUrl('/parse'), { method: 'POST', body: fd, headers: await csrfHeaders() });
       if (!res.ok) throw new Error((await res.json().catch(() => ({detail:res.statusText}))).detail);
       const data = await res.json();
       parsedRows = data.rows;
@@ -774,7 +776,7 @@
     fd.append('spreadsheet_id', spreadsheetId);
 
     try {
-      const res = await fetch('/sync', { method: 'POST', body: fd, headers: await csrfHeaders() });
+      const res = await fetch(appUrl('/sync'), { method: 'POST', body: fd, headers: await csrfHeaders() });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(err.detail || res.statusText);
@@ -874,7 +876,7 @@
     const baseName = selectedFile ? selectedFile.name.replace(/\.docx$/i, '') : 'output';
 
     try {
-      const res = await fetch('/download-rows', {
+      const res = await fetch(appUrl('/download-rows'), {
         method: 'POST',
         headers: await csrfHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ rows, filename: baseName }),
