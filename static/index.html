@@ -144,14 +144,13 @@
       font-size: 10px; font-weight: 900; text-transform: uppercase;
       letter-spacing: 0.08em; color: var(--muted); text-align: center;
     }
-    .sheet-target input {
+    .sheet-target-value {
       width: 100%; min-height: 34px; padding: 8px 10px;
       border: 1px solid #4a4a4a; border-radius: 6px;
       background: #101010; color: var(--text);
-      font-size: 11px; font-weight: 700;
-      outline: none;
+      font-size: 13px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
     }
-    .sheet-target input:focus { border-color: var(--gold); }
     .sheet-target-status {
       min-height: 13px; margin-top: 5px;
       color: var(--muted); font-size: 9px; font-weight: 800;
@@ -374,9 +373,8 @@
       </div>
 
       <div class="sheet-target" id="sheet-target">
-        <label for="sheet-id-input">Google Sheet</label>
-        <input id="sheet-id-input" type="text" list="sheet-target-options" autocomplete="off" spellcheck="false" placeholder="Paste sheet URL or ID" />
-        <datalist id="sheet-target-options"></datalist>
+        <label>Google Sheet</label>
+        <div class="sheet-target-value" id="sheet-target-name"></div>
         <div class="sheet-target-status" id="sheet-target-status"></div>
       </div>
 
@@ -440,7 +438,6 @@
   let showType     = 'PPV';
   let syncResultData = null;
   let csrfToken = null;
-  let sheetTargetsLoaded = false;
   const DEFAULT_SHEET_TARGETS = {
     PPV: {
       label: 'PPVPOC',
@@ -462,8 +459,7 @@
   const fbClear     = document.getElementById('fb-clear');
   const showToggle  = document.getElementById('show-toggle');
   const sheetTarget = document.getElementById('sheet-target');
-  const sheetIdInput = document.getElementById('sheet-id-input');
-  const sheetTargetOptions = document.getElementById('sheet-target-options');
+  const sheetTargetName = document.getElementById('sheet-target-name');
   const sheetTargetStatus = document.getElementById('sheet-target-status');
   const btnSync     = document.getElementById('btn-sync');
   const btnPreview  = document.getElementById('btn-preview');
@@ -513,50 +509,19 @@
     });
   });
 
-  sheetIdInput.addEventListener('input', () => {
-    updateSheetTargetStatus();
-  });
-
   function loadSheetTargetInput() {
-    sheetIdInput.value = DEFAULT_SHEET_TARGETS[showType]?.url || '';
+    sheetTargetName.textContent = currentSheetTarget()?.label || '';
     updateSheetTargetStatus();
   }
 
   function updateSheetTargetStatus() {
-    const id = extractSpreadsheetId(sheetIdInput.value);
-    if (id) {
-      const target = DEFAULT_SHEET_TARGETS[showType];
-      sheetTargetStatus.textContent = target && extractSpreadsheetId(target.url) === id
-        ? `${target.label} target set`
-        : `${showType} custom target set`;
-    } else if (sheetTargetOptions.children.length) {
-      sheetTargetStatus.textContent = `${sheetTargetOptions.children.length} shared Sheets available`;
-    } else {
-      sheetTargetStatus.textContent = sheetTargetsLoaded ? 'No shared Sheets found' : `${showType} target required`;
-    }
-    btnSync.disabled = !id || !parsedRows;
+    const target = currentSheetTarget();
+    sheetTargetStatus.textContent = target ? `${target.label} target set` : `${showType} target missing`;
+    btnSync.disabled = !target || !extractSpreadsheetId(target.url) || !parsedRows;
   }
 
-  async function loadSheetTargetOptions() {
-    if (sheetTargetsLoaded) return;
-    sheetTargetsLoaded = true;
-    try {
-      const res = await fetch(appUrl('/sheet-targets'), { credentials: 'include' });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({detail: res.statusText}))).detail);
-      const data = await res.json();
-      const targets = Array.isArray(data.targets) ? data.targets : [];
-      sheetTargetOptions.innerHTML = '';
-      targets.forEach(target => {
-        const option = document.createElement('option');
-        option.value = target.url || target.id;
-        option.label = target.name || target.id;
-        sheetTargetOptions.appendChild(option);
-      });
-    } catch (e) {
-      sheetTargetStatus.textContent = `Sheet lookup unavailable: ${e.message}`;
-    } finally {
-      updateSheetTargetStatus();
-    }
+  function currentSheetTarget() {
+    return DEFAULT_SHEET_TARGETS[showType] || null;
   }
 
   function extractSpreadsheetId(value) {
@@ -593,7 +558,6 @@
 
     setStatus('Parsing document…', 'loading');
     loadSheetTargetInput();
-    loadSheetTargetOptions();
     loadDocPreview(file);
   }
 
@@ -793,10 +757,9 @@
   // ── Sync to Sheets ─────────────────────────────────────────────
   btnSync.addEventListener('click', async () => {
     if (!selectedFile) return;
-    const spreadsheetId = extractSpreadsheetId(sheetIdInput.value);
+    const spreadsheetId = extractSpreadsheetId(currentSheetTarget()?.url);
     if (!spreadsheetId) {
-      setStatus(`Set a ${showType} Google Sheet target first.`, 'error');
-      sheetIdInput.focus();
+      setStatus(`${showType} Google Sheet target is missing.`, 'error');
       return;
     }
     btnSync.disabled = true;
