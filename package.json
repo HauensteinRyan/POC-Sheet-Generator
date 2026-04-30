@@ -1,0 +1,22 @@
+{
+  "name": "poc-sheet-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:worker": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf:check": "wrangler deploy --dry-run",
+    "cf:types": "wrangler types",
+    "typecheck": "wrangler types && tsc --noEmit"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.3.2",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.14.4"
+  }
+}

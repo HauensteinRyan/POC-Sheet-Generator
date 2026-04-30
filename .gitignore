@@ -10,3 +10,9 @@ credentials/*.json
 # Auth — never commit these
 users.json
 secret.key
+
+# Cloudflare local secrets / generated files
+.dev.vars
+.wrangler/
+worker-configuration.d.ts
+node_modules/

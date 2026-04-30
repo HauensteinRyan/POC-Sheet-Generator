@@ -150,12 +150,16 @@ async def upload(file: UploadFile = File(...)):
 async def sync(
     rows: str = Form(...),
     show_type: str = Form(...),
+    spreadsheet_id: str = Form(""),
 ):
     import json as _json
 
     show_type = show_type.upper()
     if show_type not in ("PPV", "FN"):
         raise HTTPException(status_code=400, detail="show_type must be 'PPV' or 'FN'.")
+    spreadsheet_id = spreadsheet_id.strip()
+    if not spreadsheet_id:
+        raise HTTPException(status_code=400, detail="Google Sheet target is required.")
 
     try:
         row_list = _json.loads(rows)
@@ -163,7 +167,7 @@ async def sync(
         raise HTTPException(status_code=422, detail="Invalid rows JSON.")
 
     try:
-        result = sync_rows(row_list, show_type)
+        result = sync_rows(row_list, show_type, spreadsheet_id)
     except (FileNotFoundError, ValueError) as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:

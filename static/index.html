@@ -138,6 +138,26 @@
     }
     .segmented button:hover:not(.active) { background: #2b2b2b; }
 
+    .sheet-target { display: none; width: 100%; }
+    .sheet-target label {
+      display: block; margin-bottom: 6px;
+      font-size: 10px; font-weight: 900; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted); text-align: center;
+    }
+    .sheet-target input {
+      width: 100%; min-height: 34px; padding: 8px 10px;
+      border: 1px solid #4a4a4a; border-radius: 6px;
+      background: #101010; color: var(--text);
+      font-size: 11px; font-weight: 700;
+      outline: none;
+    }
+    .sheet-target input:focus { border-color: var(--gold); }
+    .sheet-target-status {
+      min-height: 13px; margin-top: 5px;
+      color: var(--muted); font-size: 9px; font-weight: 800;
+      text-align: center; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
     /* action buttons */
     .btn-sync {
       display: none; width: 100%; min-height: 34px; padding: 0 14px;
@@ -353,6 +373,12 @@
         </div>
       </div>
 
+      <div class="sheet-target" id="sheet-target">
+        <label for="sheet-id-input">Google Sheet</label>
+        <input id="sheet-id-input" type="text" autocomplete="off" spellcheck="false" placeholder="Paste sheet URL or ID" />
+        <div class="sheet-target-status" id="sheet-target-status"></div>
+      </div>
+
       <button class="btn-sync" id="btn-sync">Sync to Sheets</button>
       <button class="btn-preview" id="btn-preview">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -412,6 +438,7 @@
   let xlsxFilename = 'output.xlsx';
   let showType     = 'PPV';
   let syncResultData = null;
+  const SHEET_TARGETS_KEY = 'poc-sheet-generator.sheetTargets.v1';
 
   // ── Element refs ───────────────────────────────────────────────
   const dropZone    = document.getElementById('drop-zone');
@@ -420,6 +447,9 @@
   const fbName      = document.getElementById('fb-name');
   const fbClear     = document.getElementById('fb-clear');
   const showToggle  = document.getElementById('show-toggle');
+  const sheetTarget = document.getElementById('sheet-target');
+  const sheetIdInput = document.getElementById('sheet-id-input');
+  const sheetTargetStatus = document.getElementById('sheet-target-status');
   const btnSync     = document.getElementById('btn-sync');
   const btnPreview  = document.getElementById('btn-preview');
   const btnDownload = document.getElementById('btn-download');
@@ -451,8 +481,43 @@
       document.querySelectorAll('.segmented button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       showType = btn.dataset.type;
+      loadSheetTargetInput();
     });
   });
+
+  sheetIdInput.addEventListener('input', () => {
+    const targets = getSheetTargets();
+    targets[showType] = sheetIdInput.value.trim();
+    localStorage.setItem(SHEET_TARGETS_KEY, JSON.stringify(targets));
+    updateSheetTargetStatus();
+  });
+
+  function getSheetTargets() {
+    try {
+      return JSON.parse(localStorage.getItem(SHEET_TARGETS_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  }
+
+  function loadSheetTargetInput() {
+    sheetIdInput.value = getSheetTargets()[showType] || '';
+    updateSheetTargetStatus();
+  }
+
+  function updateSheetTargetStatus() {
+    const id = extractSpreadsheetId(sheetIdInput.value);
+    sheetTargetStatus.textContent = id ? `${showType} target set` : `${showType} target required`;
+    btnSync.disabled = !id || !parsedRows;
+  }
+
+  function extractSpreadsheetId(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    const match = text.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    return text.match(/^[a-zA-Z0-9_-]{20,}$/) ? text : '';
+  }
 
   // ── File selection ─────────────────────────────────────────────
   function selectFile(file) {
@@ -468,6 +533,7 @@
     fbName.textContent    = file.name;
     fileBadge.style.display   = 'flex';
     showToggle.style.display  = 'block';
+    sheetTarget.style.display = 'block';
     btnSync.style.display     = 'flex';
     btnPreview.style.display  = 'flex';
     btnDownload.style.display = 'flex';
@@ -478,6 +544,7 @@
     rightLabel.style.display = 'inline';
 
     setStatus('Parsing document…', 'loading');
+    loadSheetTargetInput();
     loadDocPreview(file);
   }
 
@@ -486,6 +553,7 @@
     fileInput.value = '';
     fileBadge.style.display   = 'none';
     showToggle.style.display  = 'none';
+    sheetTarget.style.display = 'none';
     btnSync.style.display     = 'none';
     btnPreview.style.display  = 'none';
     btnDownload.style.display = 'none';
@@ -512,6 +580,7 @@
       renderExcelTable(parsedRows);
       leftCount.textContent = `${data.count} sections`;
       setStatus(`${data.count} sections found`, '');
+      updateSheetTargetStatus();
     } catch (e) {
       setStatus(`Parse error: ${e.message}`, 'error');
     }
@@ -675,6 +744,12 @@
   // ── Sync to Sheets ─────────────────────────────────────────────
   btnSync.addEventListener('click', async () => {
     if (!selectedFile) return;
+    const spreadsheetId = extractSpreadsheetId(sheetIdInput.value);
+    if (!spreadsheetId) {
+      setStatus(`Set a ${showType} Google Sheet target first.`, 'error');
+      sheetIdInput.focus();
+      return;
+    }
     btnSync.disabled = true;
     setStatus(`Syncing to ${showType}…`, 'loading');
 
@@ -682,6 +757,7 @@
     const fd = new FormData();
     fd.append('rows', JSON.stringify(rows));
     fd.append('show_type', showType);
+    fd.append('spreadsheet_id', spreadsheetId);
 
     try {
       const res = await fetch('/sync', { method: 'POST', body: fd });
@@ -702,7 +778,7 @@
     } catch (e) {
       setStatus(`Sync error: ${e.message}`, 'error');
     } finally {
-      btnSync.disabled = false;
+      updateSheetTargetStatus();
     }
   });
 

@@ -1,0 +1,3 @@
+SESSION_SECRET="replace-with-a-long-random-string"
+APP_USERS_JSON="{\"admin\":\"admin\"}"
+GOOGLE_SERVICE_ACCOUNT_JSON="{\"type\":\"service_account\",\"client_email\":\"...\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n\",\"token_uri\":\"https://oauth2.googleapis.com/token\"}"
