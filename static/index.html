@@ -441,7 +441,16 @@
   let syncResultData = null;
   let csrfToken = null;
   let sheetTargetsLoaded = false;
-  const SHEET_TARGETS_KEY = 'poc-sheet-generator.sheetTargets.v1';
+  const DEFAULT_SHEET_TARGETS = {
+    PPV: {
+      label: 'PPVPOC',
+      url: 'https://docs.google.com/spreadsheets/d/1Ul2YnLUN4QQ_AO3BOBhnRYBar2wYUr6DhLRc5ZMB1-Y/edit?usp=drivesdk',
+    },
+    FN: {
+      label: 'FNPOC',
+      url: 'https://docs.google.com/spreadsheets/d/1wwiviOwd4jnEjtSWFwww_IkPp4ON0yQrnLkFHArsuhA/edit?usp=drivesdk',
+    },
+  };
   const APP_BASE = location.pathname === '/poc-sheet' || location.pathname.startsWith('/poc-sheet/') ? '/poc-sheet' : '';
   const appUrl = path => `${APP_BASE}${path}`;
 
@@ -505,29 +514,21 @@
   });
 
   sheetIdInput.addEventListener('input', () => {
-    const targets = getSheetTargets();
-    targets[showType] = sheetIdInput.value.trim();
-    localStorage.setItem(SHEET_TARGETS_KEY, JSON.stringify(targets));
     updateSheetTargetStatus();
   });
 
-  function getSheetTargets() {
-    try {
-      return JSON.parse(localStorage.getItem(SHEET_TARGETS_KEY) || '{}');
-    } catch {
-      return {};
-    }
-  }
-
   function loadSheetTargetInput() {
-    sheetIdInput.value = getSheetTargets()[showType] || '';
+    sheetIdInput.value = DEFAULT_SHEET_TARGETS[showType]?.url || '';
     updateSheetTargetStatus();
   }
 
   function updateSheetTargetStatus() {
     const id = extractSpreadsheetId(sheetIdInput.value);
     if (id) {
-      sheetTargetStatus.textContent = `${showType} target set`;
+      const target = DEFAULT_SHEET_TARGETS[showType];
+      sheetTargetStatus.textContent = target && extractSpreadsheetId(target.url) === id
+        ? `${target.label} target set`
+        : `${showType} custom target set`;
     } else if (sheetTargetOptions.children.length) {
       sheetTargetStatus.textContent = `${sheetTargetOptions.children.length} shared Sheets available`;
     } else {
@@ -551,12 +552,6 @@
         option.label = target.name || target.id;
         sheetTargetOptions.appendChild(option);
       });
-      if (!extractSpreadsheetId(sheetIdInput.value) && targets.length === 1) {
-        sheetIdInput.value = targets[0].url || targets[0].id;
-        const savedTargets = getSheetTargets();
-        savedTargets[showType] = sheetIdInput.value.trim();
-        localStorage.setItem(SHEET_TARGETS_KEY, JSON.stringify(savedTargets));
-      }
     } catch (e) {
       sheetTargetStatus.textContent = `Sheet lookup unavailable: ${e.message}`;
     } finally {
