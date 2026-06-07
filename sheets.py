@@ -145,16 +145,20 @@ def sync_rows(rows: list[dict], sheet_type: str) -> dict:
         removed.append(cached[1] if len(cached) > 1 else "?")
         ws.delete_rows(sheet_row)
 
-    # 3. Append rows that are new (not in the sheet at all)
-    rows_to_append = [r for num, r in target.items() if num not in existing]
-    if rows_to_append:
-        # Re-count rows after deletions to get correct row numbers for LEN formula
-        current_count = len(ws.get_all_values())
-        append_values = []
-        for i, row in enumerate(rows_to_append, start=current_count + 1):
-            append_values.append(row_to_values(row, i))
-            added.append(row["name"])
-        ws.append_rows(append_values, value_input_option="USER_ENTERED")
+    # 3. Rewrite all data rows in document order.
+    #    This handles both new rows and any ordering gaps left by prior appends.
+    #    Row indices are always 2, 3, 4 … so LEN formulas stay correct.
+    added = [r["name"] for num, r in target.items() if num not in existing]
+    ordered_values = [row_to_values(r, i) for i, r in enumerate(rows, start=2)]
+    if ordered_values:
+        ws.update(f"A2:G{1 + len(ordered_values)}", ordered_values,
+                  value_input_option="USER_ENTERED")
+
+    # Trim any leftover rows beyond what we just wrote
+    current_total = len(ws.get_all_values())
+    expected_total = 1 + len(ordered_values)  # header + data
+    if current_total > expected_total:
+        ws.delete_rows(expected_total + 1, current_total)
 
     # 4. Standardise formatting across all data rows
     total_rows = len(ws.get_all_values())
