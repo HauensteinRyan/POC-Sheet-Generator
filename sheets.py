@@ -28,7 +28,7 @@ def load_config() -> dict:
         return json.load(f)
 
 
-def get_worksheet(sheet_type: str) -> gspread.Worksheet:
+def get_worksheet(sheet_type: str, spreadsheet_id: str | None = None) -> gspread.Worksheet:
     config = load_config()
     sheet_cfg = config["sheets"].get(sheet_type)
     if not sheet_cfg:
@@ -41,7 +41,7 @@ def get_worksheet(sheet_type: str) -> gspread.Worksheet:
             "Download a service account JSON key and place it at that path."
         )
 
-    spreadsheet_id = sheet_cfg["spreadsheet_id"]
+    spreadsheet_id = spreadsheet_id or sheet_cfg["spreadsheet_id"]
     if spreadsheet_id.startswith("YOUR_"):
         raise ValueError(
             f"Spreadsheet ID not configured for '{sheet_type}'. "
@@ -82,7 +82,7 @@ def row_to_values(row: dict, row_idx: int) -> list:
 
 # ── Sync ──────────────────────────────────────────────────────────────────────
 
-def sync_rows(rows: list[dict], sheet_type: str) -> dict:
+def sync_rows(rows: list[dict], sheet_type: str, spreadsheet_id: str | None = None) -> dict:
     """
     Sync parsed rows to the named Google Sheet.
 
@@ -93,7 +93,7 @@ def sync_rows(rows: list[dict], sheet_type: str) -> dict:
           "removed": [list of names],
         }
     """
-    ws = get_worksheet(sheet_type)
+    ws = get_worksheet(sheet_type, spreadsheet_id)
 
     # Read the full sheet (row 1 = header, rows 2+ = data)
     all_values = ws.get_all_values()
@@ -241,10 +241,7 @@ def validate_config() -> list[str]:
         return [f"config.json unreadable: {e}"]
 
     for show_type, sheet_cfg in config.get("sheets", {}).items():
-        sid = sheet_cfg.get("spreadsheet_id", "")
         creds = sheet_cfg.get("credentials_file", "")
-        if sid.startswith("YOUR_"):
-            warnings.append(f"{show_type}: spreadsheet_id not set in config.json")
         if not os.path.isfile(creds):
             warnings.append(f"{show_type}: credentials file not found ({creds})")
 

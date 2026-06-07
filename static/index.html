@@ -51,6 +51,15 @@
       align-self: flex-end; transform: translate(-7px, 0px); }
     .header-title-divider { width: 1px; height: 22px; background: var(--border); margin: 0 8px; }
     .header-title { font-size: 22px; font-weight: 700; color: #ffffff; }
+    .top-nav { margin-left: auto; display: flex; align-items: center; }
+    .top-nav a {
+      color: var(--muted); text-decoration: none;
+      font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em;
+      border: 1px solid var(--border-strong); border-radius: 6px;
+      padding: 7px 10px; line-height: 1;
+      transition: color 0.12s, border-color 0.12s, background 0.12s;
+    }
+    .top-nav a:hover { color: var(--text); border-color: var(--gold); background: rgba(210,174,75,.08); }
 
     .columns {
       display: grid;
@@ -137,6 +146,25 @@
       background: #f2f2f2; border-color: #f2f2f2; color: #111111;
     }
     .segmented button:hover:not(.active) { background: #2b2b2b; }
+
+    .sheet-target { display: none; width: 100%; }
+    .sheet-target label {
+      display: block; margin-bottom: 6px;
+      font-size: 10px; font-weight: 900; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted); text-align: center;
+    }
+    .sheet-target-value {
+      width: 100%; min-height: 34px; padding: 8px 10px;
+      border: 1px solid #4a4a4a; border-radius: 6px;
+      background: #101010; color: var(--text);
+      font-size: 13px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sheet-target-status {
+      min-height: 13px; margin-top: 5px;
+      color: var(--muted); font-size: 9px; font-weight: 800;
+      text-align: center; text-transform: uppercase; letter-spacing: 0.05em;
+    }
 
     /* action buttons */
     .btn-sync {
@@ -287,6 +315,9 @@
       .panel { height: 40vh; }
       table.xl-table { font-size: 12px; }
       td[contenteditable="true"] { font-size: 16px; }
+      header { flex-wrap: wrap; }
+      .top-nav { width: 100%; margin-left: 0; }
+      .top-nav a { width: 100%; text-align: center; }
     }
   </style>
 </head>
@@ -295,13 +326,16 @@
 
   <header>
     <div class="header-logos">
-      <img src="data:image/png;base64,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" alt="3027" />
+      <img src="static/logos/3027.png" alt="3027" />
       <div class="header-divider"></div>
-      <img src="/static/logos/prusik.png" alt="Prusik" />
+      <img src="static/logos/prusik.png" alt="Prusik" />
       <span class="header-version">v1.4</span>
       <div class="header-title-divider"></div>
       <span class="header-title">POC Sheet Generator</span>
     </div>
+    <nav class="top-nav" aria-label="3027 Apps navigation">
+      <a href="https://3027apps.prusikmedia.com/">Back to 3027 Apps</a>
+    </nav>
   </header>
 
   <div class="columns">
@@ -351,6 +385,12 @@
           <button class="active" data-type="PPV">PPV</button>
           <button data-type="FN">FN</button>
         </div>
+      </div>
+
+      <div class="sheet-target" id="sheet-target">
+        <label>Google Sheet</label>
+        <div class="sheet-target-value" id="sheet-target-name"></div>
+        <div class="sheet-target-status" id="sheet-target-status"></div>
       </div>
 
       <button class="btn-sync" id="btn-sync">Sync to Sheets</button>
@@ -412,6 +452,19 @@
   let xlsxFilename = 'output.xlsx';
   let showType     = 'PPV';
   let syncResultData = null;
+  let csrfToken = null;
+  const DEFAULT_SHEET_TARGETS = {
+    PPV: {
+      label: 'PPVPOC',
+      url: 'https://docs.google.com/spreadsheets/d/1Ul2YnLUN4QQ_AO3BOBhnRYBar2wYUr6DhLRc5ZMB1-Y/edit?usp=drivesdk',
+    },
+    FN: {
+      label: 'FNPOC',
+      url: 'https://docs.google.com/spreadsheets/d/1wwiviOwd4jnEjtSWFwww_IkPp4ON0yQrnLkFHArsuhA/edit?usp=drivesdk',
+    },
+  };
+  const APP_BASE = location.pathname === '/poc-sheet' || location.pathname.startsWith('/poc-sheet/') ? '/poc-sheet' : '';
+  const appUrl = path => `${APP_BASE}${path}`;
 
   // ── Element refs ───────────────────────────────────────────────
   const dropZone    = document.getElementById('drop-zone');
@@ -420,6 +473,9 @@
   const fbName      = document.getElementById('fb-name');
   const fbClear     = document.getElementById('fb-clear');
   const showToggle  = document.getElementById('show-toggle');
+  const sheetTarget = document.getElementById('sheet-target');
+  const sheetTargetName = document.getElementById('sheet-target-name');
+  const sheetTargetStatus = document.getElementById('sheet-target-status');
   const btnSync     = document.getElementById('btn-sync');
   const btnPreview  = document.getElementById('btn-preview');
   const btnDownload = document.getElementById('btn-download');
@@ -431,8 +487,21 @@
   const rightLabel  = document.getElementById('right-header-label');
   const configWarn  = document.getElementById('config-warn');
 
+  const authReady = fetch(appUrl('/auth/me'), { credentials: 'include' }).then(async r => {
+    if (!r.ok) throw new Error('Authentication required');
+    const data = await r.json();
+    csrfToken = data.csrfToken;
+  }).catch(() => {
+    window.location.href = appUrl('/login');
+  });
+
+  async function csrfHeaders(extra = {}) {
+    await authReady;
+    return { ...extra, 'X-CSRF-Token': csrfToken || '' };
+  }
+
   // ── Config status (check on load) ─────────────────────────────
-  fetch('/config-status').then(r => r.json()).then(({ warnings }) => {
+  fetch(appUrl('/config-status')).then(r => r.json()).then(({ warnings }) => {
     if (warnings.length) {
       configWarn.style.display = 'block';
       configWarn.textContent = '⚠ ' + warnings.join(' · ');
@@ -451,8 +520,32 @@
       document.querySelectorAll('.segmented button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       showType = btn.dataset.type;
+      loadSheetTargetInput();
     });
   });
+
+  function loadSheetTargetInput() {
+    sheetTargetName.textContent = currentSheetTarget()?.label || '';
+    updateSheetTargetStatus();
+  }
+
+  function updateSheetTargetStatus() {
+    const target = currentSheetTarget();
+    sheetTargetStatus.textContent = target ? `${target.label} target set` : `${showType} target missing`;
+    btnSync.disabled = !target || !extractSpreadsheetId(target.url) || !parsedRows;
+  }
+
+  function currentSheetTarget() {
+    return DEFAULT_SHEET_TARGETS[showType] || null;
+  }
+
+  function extractSpreadsheetId(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    const match = text.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    return text.match(/^[a-zA-Z0-9_-]{20,}$/) ? text : '';
+  }
 
   // ── File selection ─────────────────────────────────────────────
   function selectFile(file) {
@@ -468,6 +561,7 @@
     fbName.textContent    = file.name;
     fileBadge.style.display   = 'flex';
     showToggle.style.display  = 'block';
+    sheetTarget.style.display = 'block';
     btnSync.style.display     = 'flex';
     btnPreview.style.display  = 'flex';
     btnDownload.style.display = 'flex';
@@ -478,6 +572,7 @@
     rightLabel.style.display = 'inline';
 
     setStatus('Parsing document…', 'loading');
+    loadSheetTargetInput();
     loadDocPreview(file);
   }
 
@@ -486,6 +581,7 @@
     fileInput.value = '';
     fileBadge.style.display   = 'none';
     showToggle.style.display  = 'none';
+    sheetTarget.style.display = 'none';
     btnSync.style.display     = 'none';
     btnPreview.style.display  = 'none';
     btnDownload.style.display = 'none';
@@ -504,7 +600,7 @@
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch('/parse', { method: 'POST', body: fd });
+      const res = await fetch(appUrl('/parse'), { method: 'POST', body: fd, headers: await csrfHeaders() });
       if (!res.ok) throw new Error((await res.json().catch(() => ({detail:res.statusText}))).detail);
       const data = await res.json();
       parsedRows = data.rows;
@@ -512,6 +608,7 @@
       renderExcelTable(parsedRows);
       leftCount.textContent = `${data.count} sections`;
       setStatus(`${data.count} sections found`, '');
+      updateSheetTargetStatus();
     } catch (e) {
       setStatus(`Parse error: ${e.message}`, 'error');
     }
@@ -675,6 +772,11 @@
   // ── Sync to Sheets ─────────────────────────────────────────────
   btnSync.addEventListener('click', async () => {
     if (!selectedFile) return;
+    const spreadsheetId = extractSpreadsheetId(currentSheetTarget()?.url);
+    if (!spreadsheetId) {
+      setStatus(`${showType} Google Sheet target is missing.`, 'error');
+      return;
+    }
     btnSync.disabled = true;
     setStatus(`Syncing to ${showType}…`, 'loading');
 
@@ -682,9 +784,10 @@
     const fd = new FormData();
     fd.append('rows', JSON.stringify(rows));
     fd.append('show_type', showType);
+    fd.append('spreadsheet_id', spreadsheetId);
 
     try {
-      const res = await fetch('/sync', { method: 'POST', body: fd });
+      const res = await fetch(appUrl('/sync'), { method: 'POST', body: fd, headers: await csrfHeaders() });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(err.detail || res.statusText);
@@ -702,7 +805,7 @@
     } catch (e) {
       setStatus(`Sync error: ${e.message}`, 'error');
     } finally {
-      btnSync.disabled = false;
+      updateSheetTargetStatus();
     }
   });
 
@@ -784,9 +887,9 @@
     const baseName = selectedFile ? selectedFile.name.replace(/\.docx$/i, '') : 'output';
 
     try {
-      const res = await fetch('/download-rows', {
+      const res = await fetch(appUrl('/download-rows'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await csrfHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ rows, filename: baseName }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({detail:res.statusText}))).detail);

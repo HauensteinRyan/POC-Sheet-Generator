@@ -2,6 +2,62 @@
 
 Converts UFC promo script Word docs (.docx) into Excel spreadsheets (.xlsx) matching the PPVPOC format.
 
+## Cloudflare deployment
+
+This repo now includes a Cloudflare Worker migration that keeps the same browser-facing routes as the FastAPI app:
+
+- `GET /`, `GET /login`, `GET /view`, `GET /auth/me`
+- `POST /parse`
+- `POST /upload`
+- `POST /download-rows`
+- `POST /sync`
+- `GET /config-status`
+
+Cloudflare serves the files in `static/` through the Worker assets binding, while `src/worker.ts` enforces the shared 3027 Apps auth session, `.docx` parsing, `.xlsx` generation, and Google Sheets sync.
+
+### Local Worker dev
+
+```bash
+npm install
+cp .dev.vars.example .dev.vars
+# edit .dev.vars with real secret values
+npm run dev:worker
+```
+
+### Cloudflare secrets
+
+Set these in Cloudflare before production deploys:
+
+```bash
+npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
+```
+
+`GOOGLE_SERVICE_ACCOUNT_JSON` should be the full service account JSON key as a single secret value. The target spreadsheet ID is configured inside the app by pasting a Google Sheets URL or spreadsheet ID into the Google Sheet field; the browser remembers separate PPV and FN targets.
+
+Auth is shared with `celeb-sheet-api` through the `pm_session` cookie on `.prusikmedia.com`. The production Worker expects:
+
+- Custom domain: `poc-sheet.3027apps.prusikmedia.com`
+- Service binding: `AUTH_SERVICE -> celeb-sheet-api`
+- Vars: `AUTH_PUBLIC_BASE=https://celeb-sheet-api.prusikmedia.com`, `AUTH_APP_KEY=poc-sheet-generator`
+
+These are declared in `wrangler.jsonc` so Cloudflare Workers Builds keeps them on Git deploys.
+
+Sync uses fixed PPV/FN spreadsheet targets. Enable the API in the Google Cloud project that owns the service account:
+
+- Google Sheets API
+
+### Git deploy setup
+
+In Cloudflare, keep the Worker connected to the GitHub repo:
+
+1. Workers & Pages -> Create -> Import a repository.
+2. Select `prusik-haulbag/poc-sheet-generator`.
+3. Use `npm run build` as the build command.
+4. Use `npx wrangler deploy` as the deploy command.
+5. Set `GOOGLE_SERVICE_ACCOUNT_JSON` in the Worker settings when Sheets sync should be enabled.
+
+After that, pushes to the connected branch can deploy the Worker.
+
 ## Setup (first time only)
 
 ```bash
