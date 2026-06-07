@@ -138,13 +138,9 @@ def parse_doc(path: str) -> list[dict]:
                 suffix = variant_count - 1 if base_slot_taken else variant_count
                 new_num = f"{base}-{suffix}"
             else:
-                # No base-section body — first variant takes the bare base number.
+                # No base-section body — all variants get the "-1", "-2", … numbering.
                 variant_count += 1
-                if variant_count == 1:
-                    new_num = base
-                    base_slot_taken = True
-                else:
-                    new_num = f"{base}-{variant_count - 1}"
+                new_num = f"{base}-{variant_count}"
 
             base_title = re.split(r" - (ALT READ|Prelim|Main)$", current_name)[0]
             if re.search(r"prelim", label, re.IGNORECASE):
