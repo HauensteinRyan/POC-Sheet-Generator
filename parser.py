@@ -11,6 +11,61 @@ Each row dict:
 
 import re
 from docx import Document
+from docx.oxml.ns import qn
+
+
+def _run_is_struck(r_elem) -> bool:
+    """True if a run carries single or double strikethrough formatting."""
+    rpr = r_elem.find(qn("w:rPr"))
+    if rpr is None:
+        return False
+    for tag in ("w:strike", "w:dstrike"):
+        el = rpr.find(qn(tag))
+        if el is not None:
+            val = el.get(qn("w:val"))
+            # Absent val (or "true"/"1") means the strike is ON.
+            if val in (None, "true", "1", "on"):
+                return True
+    return False
+
+
+def _run_text(r_elem) -> str:
+    """Visible text of a run: w:t content, with tabs/breaks as spaces."""
+    out = []
+    for node in r_elem.iter():
+        tag = node.tag
+        if tag == qn("w:t"):
+            out.append(node.text or "")
+        elif tag in (qn("w:tab"), qn("w:br"), qn("w:cr")):
+            out.append(" ")
+    return "".join(out)
+
+
+def _collect(elem, parts):
+    """Walk paragraph XML, gathering visible text in document order.
+
+    - Includes text inside hyperlinks (w:hyperlink), tracked insertions
+      (w:ins), and smart tags — these are dropped by python-docx's para.text.
+    - Skips any run with strikethrough formatting.
+    - Skips tracked deletions (w:del) entirely.
+    """
+    for child in elem:
+        tag = child.tag
+        if tag == qn("w:r"):
+            if not _run_is_struck(child):
+                parts.append(_run_text(child))
+        elif tag in (qn("w:hyperlink"), qn("w:ins"), qn("w:smartTag")):
+            _collect(child, parts)
+        elif tag == qn("w:del"):
+            continue
+
+
+def _para_text(para) -> str:
+    """Full visible paragraph text, including hyperlinks, excluding strikethrough."""
+    parts: list[str] = []
+    _collect(para._p, parts)
+    return "".join(parts)
+
 
 _HEADER_RE = re.compile(
     r"^\s*#?\s*(\d+)\s*[–\-]\s*(.+)$"
@@ -80,7 +135,7 @@ def parse_doc(path: str) -> list[dict]:
             pass
 
     for para in doc.paragraphs:
-        text = para.text.strip()
+        text = _para_text(para).strip()
 
         if not text:
             blank_run += 1
