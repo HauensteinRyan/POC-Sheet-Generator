@@ -326,9 +326,9 @@
 
   <header>
     <div class="header-logos">
-      <img src="static/logos/3027.png" alt="3027" />
+      <img src="/poc-sheet-generator/static/logos/3027.png" alt="3027" />
       <div class="header-divider"></div>
-      <img src="static/logos/prusik.png" alt="Prusik" />
+      <img src="/poc-sheet-generator/static/logos/prusik.png" alt="Prusik" />
       <span class="header-version">v1.7</span>
       <div class="header-title-divider"></div>
       <span class="header-title">POC Sheet Generator</span>
@@ -463,7 +463,9 @@
       url: 'https://docs.google.com/spreadsheets/d/1wwiviOwd4jnEjtSWFwww_IkPp4ON0yQrnLkFHArsuhA/edit?usp=drivesdk',
     },
   };
-  const APP_BASE = location.pathname === '/poc-sheet' || location.pathname.startsWith('/poc-sheet/') ? '/poc-sheet' : '';
+  const APP_BASE = ['/poc-sheet-generator', '/poc-sheet'].find(prefix =>
+    location.pathname === prefix || location.pathname.startsWith(`${prefix}/`)
+  ) || '';
   const appUrl = path => `${APP_BASE}${path}`;
 
   // ── Element refs ───────────────────────────────────────────────

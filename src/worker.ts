@@ -176,11 +176,13 @@ async function handleRequest(request: Request, env: Env, _ctx: ExecutionContext)
 }
 
 function normalizePath(pathname: string): string {
-  if (pathname === "/poc-sheet") {
-    return "/";
-  }
-  if (pathname.startsWith("/poc-sheet/")) {
-    return pathname.slice("/poc-sheet".length) || "/";
+  for (const prefix of ["/poc-sheet", "/poc-sheet-generator"]) {
+    if (pathname === prefix) {
+      return "/";
+    }
+    if (pathname.startsWith(`${prefix}/`)) {
+      return pathname.slice(prefix.length) || "/";
+    }
   }
   return pathname;
 }
